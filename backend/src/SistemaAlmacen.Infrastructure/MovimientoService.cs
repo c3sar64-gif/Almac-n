@@ -28,6 +28,28 @@ public class MovimientoService
         return mov;
     }
 
+    public async Task<Movimiento> RegistrarSalidaAsync(
+        int productoId, int almacenId, decimal cantidad, int usuarioId, string? nota = null)
+    {
+        ValidarCantidad(cantidad);
+        await using var tx = await _db.Database.BeginTransactionAsync();
+        var existencia = await ObtenerOCrearExistenciaAsync(productoId, almacenId);
+        if (existencia.Cantidad < cantidad)
+            throw new ReglaNegocioException(
+                $"Stock insuficiente: hay {existencia.Cantidad} y se pidieron {cantidad}.");
+        existencia.Cantidad -= cantidad;
+        var mov = new Movimiento
+        {
+            Tipo = TipoMovimiento.Salida, ProductoId = productoId,
+            AlmacenOrigenId = almacenId, Cantidad = cantidad,
+            UsuarioId = usuarioId, Nota = nota, Fecha = DateTime.UtcNow
+        };
+        _db.Movimientos.Add(mov);
+        await _db.SaveChangesAsync();
+        await tx.CommitAsync();
+        return mov;
+    }
+
     private static void ValidarCantidad(decimal cantidad)
     {
         if (cantidad <= 0) throw new ReglaNegocioException("La cantidad debe ser mayor a cero.");

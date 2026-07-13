@@ -30,4 +30,28 @@ public class MovimientoServiceTests
         var ex = db.Existencias.Single(e => e.ProductoId == p.Id && e.AlmacenId == a1.Id);
         Assert.Equal(10, ex.Cantidad);
     }
+
+    [Fact]
+    public async Task Salida_disminuye_el_stock()
+    {
+        var (db, p, a1, _, u) = Preparar();
+        var svc = new MovimientoService(db);
+        await svc.RegistrarEntradaAsync(p.Id, a1.Id, 10, u.Id);
+
+        await svc.RegistrarSalidaAsync(p.Id, a1.Id, 4, u.Id);
+
+        var ex = db.Existencias.Single(e => e.ProductoId == p.Id && e.AlmacenId == a1.Id);
+        Assert.Equal(6, ex.Cantidad);
+    }
+
+    [Fact]
+    public async Task Salida_con_stock_insuficiente_lanza_error()
+    {
+        var (db, p, a1, _, u) = Preparar();
+        var svc = new MovimientoService(db);
+        await svc.RegistrarEntradaAsync(p.Id, a1.Id, 3, u.Id);
+
+        await Assert.ThrowsAsync<ReglaNegocioException>(
+            () => svc.RegistrarSalidaAsync(p.Id, a1.Id, 5, u.Id));
+    }
 }
