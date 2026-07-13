@@ -50,6 +50,33 @@ public class MovimientoService
         return mov;
     }
 
+    public async Task<Movimiento> RegistrarTransferenciaAsync(
+        int productoId, int almacenOrigenId, int almacenDestinoId,
+        decimal cantidad, int usuarioId, string? nota = null)
+    {
+        ValidarCantidad(cantidad);
+        if (almacenOrigenId == almacenDestinoId)
+            throw new ReglaNegocioException("El almacén de origen y destino no pueden ser el mismo.");
+        await using var tx = await _db.Database.BeginTransactionAsync();
+        var origen = await ObtenerOCrearExistenciaAsync(productoId, almacenOrigenId);
+        if (origen.Cantidad < cantidad)
+            throw new ReglaNegocioException(
+                $"Stock insuficiente en origen: hay {origen.Cantidad} y se pidieron {cantidad}.");
+        var destino = await ObtenerOCrearExistenciaAsync(productoId, almacenDestinoId);
+        origen.Cantidad -= cantidad;
+        destino.Cantidad += cantidad;
+        var mov = new Movimiento
+        {
+            Tipo = TipoMovimiento.Transferencia, ProductoId = productoId,
+            AlmacenOrigenId = almacenOrigenId, AlmacenDestinoId = almacenDestinoId,
+            Cantidad = cantidad, UsuarioId = usuarioId, Nota = nota, Fecha = DateTime.UtcNow
+        };
+        _db.Movimientos.Add(mov);
+        await _db.SaveChangesAsync();
+        await tx.CommitAsync();
+        return mov;
+    }
+
     private static void ValidarCantidad(decimal cantidad)
     {
         if (cantidad <= 0) throw new ReglaNegocioException("La cantidad debe ser mayor a cero.");
