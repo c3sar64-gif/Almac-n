@@ -5,6 +5,9 @@ using Xunit;
 
 namespace SistemaAlmacen.Tests;
 
+// Nota: la garantía anti-sobregiro bajo concurrencia depende del aislamiento
+// SERIALIZABLE + reintentos ante fallos de serialización (Postgres 40001).
+// Ese escenario no es reproducible en estos tests mono-hilo sobre SQLite.
 public class MovimientoServiceTests
 {
     private static (AppDbContext db, Producto p, Almacen a1, Almacen a2, Usuario u) Preparar()
@@ -92,5 +95,32 @@ public class MovimientoServiceTests
 
         await Assert.ThrowsAsync<ReglaNegocioException>(
             () => svc.RegistrarTransferenciaAsync(p.Id, a1.Id, a1.Id, 5, u.Id));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-5)]
+    public async Task Cantidad_invalida_lanza_error(decimal cantidad)
+    {
+        var (db, p, a1, _, u) = Preparar();
+        var svc = new MovimientoService(db);
+
+        await Assert.ThrowsAsync<ReglaNegocioException>(
+            () => svc.RegistrarEntradaAsync(p.Id, a1.Id, cantidad, u.Id));
+    }
+
+    [Fact]
+    public async Task Salida_sin_existencia_previa_no_deja_existencia_fantasma()
+    {
+        var (db, p, a1, _, u) = Preparar();
+        var svc = new MovimientoService(db);
+
+        await Assert.ThrowsAsync<ReglaNegocioException>(
+            () => svc.RegistrarSalidaAsync(p.Id, a1.Id, 5, u.Id));
+
+        // Reutilizar el MISMO contexto: un SaveChanges posterior no debe insertar nada.
+        db.SaveChanges();
+        Assert.False(db.Existencias.Any());
+        Assert.False(db.Movimientos.Any());
     }
 }

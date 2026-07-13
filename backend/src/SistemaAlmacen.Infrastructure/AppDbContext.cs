@@ -18,6 +18,8 @@ public class AppDbContext : DbContext
         mb.Entity<Producto>().HasIndex(p => p.Sku).IsUnique();
         mb.Entity<Usuario>().HasIndex(u => u.Email).IsUnique();
         mb.Entity<Existencia>().HasIndex(e => new { e.ProductoId, e.AlmacenId }).IsUnique();
+        mb.Entity<Existencia>().ToTable(t =>
+            t.HasCheckConstraint("ck_existencias_cantidad_no_negativa", "\"Cantidad\" >= 0"));
         mb.Entity<Existencia>().Property(e => e.Cantidad).HasPrecision(18, 3);
         mb.Entity<Existencia>().Property(e => e.StockMinimo).HasPrecision(18, 3);
         mb.Entity<Movimiento>().Property(m => m.Cantidad).HasPrecision(18, 3);
