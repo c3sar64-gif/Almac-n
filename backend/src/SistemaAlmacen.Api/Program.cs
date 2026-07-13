@@ -16,6 +16,16 @@ builder.Services.AddDbContext<AppDbContext>(o =>
 builder.Services.AddScoped<MovimientoService>();
 
 var jwt = builder.Configuration.GetSection("Jwt");
+
+// En producción es obligatorio configurar secretos propios (env vars / secret manager).
+if (builder.Environment.IsProduction())
+{
+    if (jwt["Key"] == "clave-desarrollo-cambiar-en-produccion-minimo-32-chars")
+        throw new InvalidOperationException("Jwt:Key de desarrollo detectada: configura una clave propia para producción.");
+    if (string.IsNullOrEmpty(builder.Configuration["Seed:AdminPassword"]))
+        throw new InvalidOperationException("Configura Seed:AdminPassword para producción.");
+}
+
 builder.Services.AddSingleton(new TokenService(
     jwt["Key"]!, jwt["Issuer"]!, int.Parse(jwt["ExpiraMinutos"]!)));
 
