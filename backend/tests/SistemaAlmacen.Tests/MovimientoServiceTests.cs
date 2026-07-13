@@ -123,4 +123,24 @@ public class MovimientoServiceTests
         Assert.False(db.Existencias.Any());
         Assert.False(db.Movimientos.Any());
     }
+
+    [Fact]
+    public async Task Entrada_con_producto_inexistente_lanza_error()
+    {
+        var (db, _, a1, _, u) = Preparar();
+        var svc = new MovimientoService(db);
+
+        await Assert.ThrowsAsync<ReglaNegocioException>(
+            () => svc.RegistrarEntradaAsync(999, a1.Id, 5, u.Id));
+    }
+
+    [Fact]
+    public async Task Entrada_con_almacen_inexistente_lanza_error()
+    {
+        var (db, p, _, _, u) = Preparar();
+        var svc = new MovimientoService(db);
+
+        await Assert.ThrowsAsync<ReglaNegocioException>(
+            () => svc.RegistrarEntradaAsync(p.Id, 999, 5, u.Id));
+    }
 }

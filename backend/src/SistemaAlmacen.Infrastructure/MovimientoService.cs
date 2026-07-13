@@ -16,6 +16,7 @@ public class MovimientoService
         => EjecutarConReintentosAsync(async () =>
         {
             ValidarCantidad(cantidad);
+            await ValidarReferenciasAsync(productoId, almacenId);
             await using var tx = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             var existencia = await ObtenerOCrearExistenciaAsync(productoId, almacenId);
             existencia.Cantidad += cantidad;
@@ -36,6 +37,7 @@ public class MovimientoService
         => EjecutarConReintentosAsync(async () =>
         {
             ValidarCantidad(cantidad);
+            await ValidarReferenciasAsync(productoId, almacenId);
             await using var tx = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             var existencia = await ObtenerOCrearExistenciaAsync(productoId, almacenId);
             if (existencia.Cantidad < cantidad)
@@ -62,6 +64,7 @@ public class MovimientoService
             ValidarCantidad(cantidad);
             if (almacenOrigenId == almacenDestinoId)
                 throw new ReglaNegocioException("El almacén de origen y destino no pueden ser el mismo.");
+            await ValidarReferenciasAsync(productoId, almacenOrigenId, almacenDestinoId);
             await using var tx = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             var origen = await ObtenerOCrearExistenciaAsync(productoId, almacenOrigenId);
             if (origen.Cantidad < cantidad)
@@ -82,15 +85,17 @@ public class MovimientoService
             return mov;
         });
 
-    // Reintenta ante fallos de serialización de Postgres (40001) y limpia el
-    // change tracker en cualquier fallo para no dejar entidades fantasma.
+    // Reintenta ante fallos de serialización de Postgres (40001) y ante la carrera
+    // de crear la primera existencia de un par producto/almacén (23505 sobre su
+    // índice único); limpia el change tracker en cualquier fallo para no dejar
+    // entidades fantasma.
     private async Task<Movimiento> EjecutarConReintentosAsync(Func<Task<Movimiento>> operacion)
     {
         const int maxIntentos = 3;
         for (var intento = 1; ; intento++)
         {
             try { return await operacion(); }
-            catch (Exception ex) when (intento < maxIntentos && EsFalloDeSerializacion(ex))
+            catch (Exception ex) when (intento < maxIntentos && EsReintentable(ex))
             {
                 _db.ChangeTracker.Clear();
             }
@@ -102,16 +107,28 @@ public class MovimientoService
         }
     }
 
-    private static bool EsFalloDeSerializacion(Exception ex)
+    private static bool EsReintentable(Exception ex)
     {
         for (var e = ex; e is not null; e = e.InnerException!)
-            if (e is PostgresException pg && pg.SqlState == "40001") return true;
+            if (e is PostgresException pg &&
+                (pg.SqlState == "40001" ||
+                 (pg.SqlState == "23505" && pg.ConstraintName == "IX_Existencias_ProductoId_AlmacenId")))
+                return true;
         return false;
     }
 
     private static void ValidarCantidad(decimal cantidad)
     {
         if (cantidad <= 0) throw new ReglaNegocioException("La cantidad debe ser mayor a cero.");
+    }
+
+    private async Task ValidarReferenciasAsync(int productoId, params int[] almacenIds)
+    {
+        if (!await _db.Productos.AnyAsync(p => p.Id == productoId))
+            throw new ReglaNegocioException($"El producto {productoId} no existe.");
+        foreach (var id in almacenIds)
+            if (!await _db.Almacenes.AnyAsync(a => a.Id == id))
+                throw new ReglaNegocioException($"El almacén {id} no existe.");
     }
 
     private async Task<Existencia> ObtenerOCrearExistenciaAsync(int productoId, int almacenId)
