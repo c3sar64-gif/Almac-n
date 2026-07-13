@@ -16,6 +16,7 @@ builder.Services.AddDbContext<AppDbContext>(o =>
 builder.Services.AddScoped<MovimientoService>();
 
 var jwt = builder.Configuration.GetSection("Jwt");
+var origenesPermitidos = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 
 // En producción es obligatorio configurar secretos propios (env vars / secret manager).
 if (builder.Environment.IsProduction())
@@ -24,6 +25,8 @@ if (builder.Environment.IsProduction())
         throw new InvalidOperationException("Jwt:Key de desarrollo detectada: configura una clave propia para producción.");
     if (string.IsNullOrEmpty(builder.Configuration["Seed:AdminPassword"]))
         throw new InvalidOperationException("Configura Seed:AdminPassword para producción.");
+    if (origenesPermitidos.Length == 0 || origenesPermitidos.Any(or => or.Contains("localhost")))
+        throw new InvalidOperationException("Configura Cors:AllowedOrigins con el dominio real del frontend para producción.");
 }
 
 builder.Services.AddSingleton(new TokenService(
@@ -41,7 +44,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
-    p.WithOrigins("http://localhost:5173").AllowAnyHeader().AllowAnyMethod()));
+    p.WithOrigins(origenesPermitidos).AllowAnyHeader().AllowAnyMethod()));
 
 var app = builder.Build();
 
