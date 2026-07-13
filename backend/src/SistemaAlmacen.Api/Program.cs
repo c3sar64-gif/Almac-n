@@ -54,6 +54,7 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+app.UseMiddleware<SistemaAlmacen.Api.ManejadorErrores>();
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
