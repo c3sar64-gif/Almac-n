@@ -1,4 +1,10 @@
+using Microsoft.EntityFrameworkCore;
+using SistemaAlmacen.Infrastructure;
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddDbContext<AppDbContext>(o =>
+    o.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 
 // Add services to the container.
 
