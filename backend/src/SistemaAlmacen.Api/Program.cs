@@ -73,3 +73,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
+
+// Necesario para WebApplicationFactory<Program> en los tests de integración
+// (top-level statements generan una clase Program interna por defecto).
+public partial class Program { }
