@@ -1,0 +1,16 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, sans-serif; background: #f5f6f8; color: #222; }
+main { padding: 1.5rem; max-width: 1100px; margin: 0 auto; }
+table { width: 100%; border-collapse: collapse; background: #fff; }
+th, td { text-align: left; padding: .5rem .75rem; border-bottom: 1px solid #e3e5e8; }
+th { background: #eef0f3; }
+form.panel, .panel { background: #fff; padding: 1rem; border: 1px solid #e3e5e8; border-radius: 6px; margin-bottom: 1rem; }
+label { display: block; margin-bottom: .5rem; font-size: .9rem; }
+input, select { width: 100%; padding: .4rem; margin-top: .2rem; border: 1px solid #c8ccd2; border-radius: 4px; }
+button { padding: .45rem .9rem; border: 0; border-radius: 4px; background: #2457a7; color: #fff; cursor: pointer; }
+button.secundario { background: #6a7280; }
+nav { display: flex; gap: 1rem; padding: .75rem 1.5rem; background: #1d2733; }
+nav a { color: #cfd8e3; text-decoration: none; }
+nav a.activo { color: #fff; font-weight: 600; }
+.error { color: #b3261e; margin: .5rem 0; }
+.alerta { color: #b3261e; font-weight: 600; }
