@@ -13,13 +13,16 @@ export default function Existencias() {
     api<Almacen[]>('/api/almacenes').then(setAlmacenes).catch(e => setError(e.message))
   }, [])
 
-  useEffect(() => {
+  async function cargarExistencias() {
     const params = new URLSearchParams()
     if (almacenId) params.set('almacenId', almacenId)
     if (soloBajoMinimo) params.set('bajoMinimo', 'true')
-    api<Existencia[]>(`/api/existencias?${params}`)
-      .then(setExistencias)
-      .catch(e => setError(e.message))
+    setExistencias(await api<Existencia[]>(`/api/existencias?${params}`))
+  }
+
+  useEffect(() => {
+    cargarExistencias().catch(e => setError(e.message))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [almacenId, soloBajoMinimo])
 
   async function cambiarStockMinimo(e: Existencia) {
@@ -29,7 +32,7 @@ export default function Existencias() {
     await api(`/api/existencias/${e.id}/stock-minimo`, {
       method: 'PUT', body: JSON.stringify(Number(valor)),
     })
-    setExistencias(await api<Existencia[]>(`/api/existencias${almacenId ? `?almacenId=${almacenId}` : ''}`))
+    await cargarExistencias()
   }
 
   return (

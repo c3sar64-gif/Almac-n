@@ -1,10 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/cliente'
 import type { UsuarioLista } from '../api/tipos'
+import { useAuth } from '../auth/AuthContext'
 
 const vacio = { email: '', nombre: '', password: '', rol: 'Operador' }
 
 export default function Usuarios() {
+  const { sesion } = useAuth()
+  const esAdmin = sesion?.rol === 'Admin'
   const [usuarios, setUsuarios] = useState<UsuarioLista[]>([])
   const [form, setForm] = useState(vacio)
   const [error, setError] = useState('')
@@ -12,7 +15,9 @@ export default function Usuarios() {
   async function cargar() {
     setUsuarios(await api<UsuarioLista[]>('/api/usuarios'))
   }
-  useEffect(() => { cargar().catch(e => setError(e.message)) }, [])
+  useEffect(() => {
+    if (esAdmin) cargar().catch(e => setError(e.message))
+  }, [esAdmin])
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -31,6 +36,11 @@ export default function Usuarios() {
       method: 'PUT', body: JSON.stringify(!u.activo),
     })
     await cargar()
+  }
+
+  // El backend ya restringe /api/usuarios a Admin; esto evita mostrar la UI de gestión.
+  if (!esAdmin) {
+    return <p className="error">Solo los administradores pueden gestionar usuarios.</p>
   }
 
   return (

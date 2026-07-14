@@ -31,7 +31,9 @@ export async function api<T>(ruta: string, init?: RequestInit): Promise<T> {
       ...init?.headers,
     },
   })
-  if (res.status === 401) {
+  // Solo tratar 401 como sesión expirada si había una sesión activa; el 401
+  // del login (credenciales inválidas) debe llegar al formulario con su mensaje.
+  if (res.status === 401 && sesion) {
     cerrarSesion()
     window.location.href = '/login'
     throw new ApiError(401, 'Sesión expirada.')
