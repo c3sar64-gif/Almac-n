@@ -6,6 +6,7 @@ export interface Producto {
   categoria?: string | null
   unidadMedida: string
   activo: boolean
+  imagenUrl?: string | null
 }
 
 export interface Almacen {
@@ -20,7 +21,7 @@ export interface Existencia {
   cantidad: number
   stockMinimo: number
   bajoMinimo: boolean
-  producto: { id: number; sku: string; nombre: string; unidadMedida: string }
+  producto: { id: number; sku: string; nombre: string; unidadMedida: string; categoria?: string | null; imagenUrl?: string | null }
   almacen: { id: number; nombre: string }
 }
 

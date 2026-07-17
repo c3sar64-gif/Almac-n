@@ -26,7 +26,7 @@ public class ExistenciasController : ControllerBase
             {
                 e.Id, e.Cantidad, e.StockMinimo,
                 BajoMinimo = e.Cantidad < e.StockMinimo,
-                Producto = new { e.Producto!.Id, e.Producto.Sku, e.Producto.Nombre, e.Producto.UnidadMedida },
+                Producto = new { e.Producto!.Id, e.Producto.Sku, e.Producto.Nombre, e.Producto.UnidadMedida, e.Producto.Categoria, e.Producto.ImagenUrl },
                 Almacen = new { e.Almacen!.Id, e.Almacen.Nombre },
             }).ToListAsync();
     }

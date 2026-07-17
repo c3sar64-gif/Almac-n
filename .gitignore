@@ -5,3 +5,7 @@ appsettings.Development.json
 node_modules/
 dist/
 .vs/
+.env
+.env.local
+.env.*.local
+*.env

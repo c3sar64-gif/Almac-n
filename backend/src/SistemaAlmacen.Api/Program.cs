@@ -6,17 +6,59 @@ using Microsoft.IdentityModel.Tokens;
 using SistemaAlmacen.Core.Entidades;
 using SistemaAlmacen.Infrastructure;
 
+// Cargar variables de entorno desde el archivo .env si existe en el directorio de trabajo o padres
+var currentDir = Directory.GetCurrentDirectory();
+while (!string.IsNullOrEmpty(currentDir))
+{
+    var envPath = Path.Combine(currentDir, ".env");
+    if (File.Exists(envPath))
+    {
+        foreach (var line in File.ReadAllLines(envPath))
+        {
+            if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#")) continue;
+            var parts = line.Split('=', 2);
+            if (parts.Length == 2)
+            {
+                var key = parts[0].Trim();
+                var val = parts[1].Trim();
+                if (val.StartsWith("\"") && val.EndsWith("\"") && val.Length >= 2)
+                {
+                    val = val[1..^1];
+                }
+                Environment.SetEnvironmentVariable(key, val);
+            }
+        }
+        break;
+    }
+    currentDir = Directory.GetParent(currentDir)?.FullName;
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Enums como texto en JSON (el frontend envía/recibe "Admin", "Entrada", etc.)
 builder.Services.AddControllers().AddJsonOptions(o =>
     o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
 builder.Services.AddDbContext<AppDbContext>(o =>
-    o.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
+{
+    var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
+        ?? builder.Configuration.GetConnectionString("Default");
+    o.UseNpgsql(connectionString, npgsqlOptions =>
+    {
+        npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(30),
+            errorCodesToAdd: null);
+    });
+});
+
 builder.Services.AddScoped<MovimientoService>();
 
 var jwt = builder.Configuration.GetSection("Jwt");
-var origenesPermitidos = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+var envAllowedOrigins = Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGINS");
+var origenesPermitidos = !string.IsNullOrEmpty(envAllowedOrigins)
+    ? envAllowedOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    : builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 
 // En producción es obligatorio configurar secretos propios (env vars / secret manager).
 if (builder.Environment.IsProduction())
@@ -53,6 +95,14 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
+    try
+    {
+        db.Database.ExecuteSqlRaw("ALTER TABLE \"Productos\" ADD COLUMN IF NOT EXISTS \"ImagenUrl\" TEXT;");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error adding ImagenUrl column: {ex.Message}");
+    }
     if (!db.Usuarios.Any())
     {
         db.Usuarios.Add(new Usuario
@@ -68,6 +118,7 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseMiddleware<SistemaAlmacen.Api.ManejadorErrores>();
+app.UseStaticFiles();
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();

@@ -23,7 +23,9 @@ export class ApiError extends Error {
 
 export async function api<T>(ruta: string, init?: RequestInit): Promise<T> {
   const sesion = obtenerSesion()
-  const res = await fetch(ruta, {
+  const baseUrl = import.meta.env.VITE_API_URL || '';
+  const url = ruta.startsWith('http') ? ruta : `${baseUrl.replace(/\/$/, '')}/${ruta.replace(/^\//, '')}`
+  const res = await fetch(url, {
     ...init,
     headers: {
       'Content-Type': 'application/json',

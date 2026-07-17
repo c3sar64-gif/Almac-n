@@ -9,4 +9,5 @@ public class Producto
     public string? Categoria { get; set; }
     public string UnidadMedida { get; set; } = "pieza";
     public bool Activo { get; set; } = true;
+    public string? ImagenUrl { get; set; }
 }
