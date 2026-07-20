@@ -7,6 +7,7 @@ export default function Login() {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [mostrarPassword, setMostrarPassword] = useState(false)
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(false)
 
@@ -102,11 +103,11 @@ export default function Login() {
               {/* Password Input */}
               <div className="relative floating-label-input">
                 <input
-                  className="w-full h-14 pt-4 pb-2 px-stack-sm border-b border-outline-variant focus:border-primary bg-transparent font-body-md transition-all duration-200"
+                  className="w-full h-14 pt-4 pb-2 pl-stack-sm pr-10 border-b border-outline-variant focus:border-primary bg-transparent font-body-md transition-all duration-200"
                   id="password"
                   name="password"
                   placeholder=" "
-                  type="password"
+                  type={mostrarPassword ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   required
@@ -117,6 +118,16 @@ export default function Login() {
                 >
                   Contraseña del Sistema
                 </label>
+                <button
+                  type="button"
+                  onClick={() => setMostrarPassword(!mostrarPassword)}
+                  className="absolute right-2 top-4 text-slate-400 hover:text-primary transition-colors p-1 cursor-pointer flex items-center justify-center"
+                  title={mostrarPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                >
+                  <span className="material-symbols-outlined text-xl select-none">
+                    {mostrarPassword ? 'visibility_off' : 'visibility'}
+                  </span>
+                </button>
               </div>
 
               {error && (
