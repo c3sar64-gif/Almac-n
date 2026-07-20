@@ -16,4 +16,5 @@ public class Usuario
     public string PasswordHash { get; set; } = "";
     public Rol Rol { get; set; } = Rol.Almacenero;
     public bool Activo { get; set; } = true;
+    public string ModulosPermitidos { get; set; } = "productos,almacenes,movimientos,logistica,reportes,usuarios";
 }

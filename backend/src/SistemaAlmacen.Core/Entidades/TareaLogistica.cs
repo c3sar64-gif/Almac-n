@@ -21,6 +21,10 @@ public class TareaLogistica
     public Almacen? AlmacenDestino { get; set; }
     public EstadoTarea Estado { get; set; } = EstadoTarea.Pendiente;
     public DateTime FechaAsignacion { get; set; } = DateTime.UtcNow;
+    public DateTime FechaProgramada { get; set; } = DateTime.UtcNow.Date;
+    public string HoraInicio { get; set; } = "08:00";
+    public string HoraFin { get; set; } = "09:00";
     public DateTime? FechaCompletado { get; set; }
     public string? NotasChofer { get; set; }
+    public string? ComprobanteUrl { get; set; }
 }

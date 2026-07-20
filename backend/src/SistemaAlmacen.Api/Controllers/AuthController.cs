@@ -29,7 +29,8 @@ public class AuthController : ControllerBase
         {
             token = _tokens.Generar(usuario),
             nombre = usuario.Nombre,
-            rol = usuario.Rol.ToString()
+            rol = usuario.Rol.ToString(),
+            modulosPermitidos = usuario.ModulosPermitidos ?? "productos,almacenes,movimientos,logistica,reportes,usuarios"
         });
     }
 }

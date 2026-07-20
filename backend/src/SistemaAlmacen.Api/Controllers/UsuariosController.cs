@@ -7,24 +7,26 @@ using SistemaAlmacen.Infrastructure;
 
 namespace SistemaAlmacen.Api.Controllers;
 
-public record CrearUsuarioRequest(string Email, string Nombre, string Password, Rol Rol);
-public record EditarUsuarioRequest(string Email, string Nombre, Rol Rol, string? Password);
+public record CrearUsuarioRequest(string Email, string Nombre, string Password, Rol Rol, string? ModulosPermitidos);
+public record EditarUsuarioRequest(string Email, string Nombre, Rol Rol, string? Password, string? ModulosPermitidos);
 
 [ApiController]
 [Route("api/usuarios")]
-[Authorize(Roles = "Admin")]
+[Authorize]
 public class UsuariosController : ControllerBase
 {
     private readonly AppDbContext _db;
     public UsuariosController(AppDbContext db) { _db = db; }
 
     [HttpGet]
+    [Authorize(Roles = "Admin,Encargado,Almacenero")]
     public async Task<IEnumerable<object>> Listar() =>
         await _db.Usuarios
-            .Select(u => new { u.Id, u.Email, u.Nombre, Rol = u.Rol.ToString(), u.Activo })
+            .Select(u => new { u.Id, u.Email, u.Nombre, Rol = u.Rol.ToString(), u.Activo, u.ModulosPermitidos })
             .ToListAsync();
 
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Crear(CrearUsuarioRequest req)
     {
         if (await _db.Usuarios.AnyAsync(u => u.Email == req.Email))
@@ -33,15 +35,19 @@ public class UsuariosController : ControllerBase
             throw new ReglaNegocioException("La contraseña debe tener al menos 8 caracteres.");
         var u = new Usuario
         {
-            Email = req.Email, Nombre = req.Nombre, Rol = req.Rol,
+            Email = req.Email,
+            Nombre = req.Nombre,
+            Rol = req.Rol,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password),
+            ModulosPermitidos = string.IsNullOrWhiteSpace(req.ModulosPermitidos) ? "productos,almacenes,movimientos,logistica,reportes,usuarios" : req.ModulosPermitidos.Trim()
         };
         _db.Usuarios.Add(u);
         await _db.SaveChangesAsync();
-        return Created($"api/usuarios/{u.Id}", new { u.Id, u.Email, u.Nombre, Rol = u.Rol.ToString() });
+        return Created($"api/usuarios/{u.Id}", new { u.Id, u.Email, u.Nombre, Rol = u.Rol.ToString(), u.ModulosPermitidos });
     }
 
     [HttpPut("{id:int}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Editar(int id, EditarUsuarioRequest req)
     {
         var u = await _db.Usuarios.FindAsync(id);
@@ -53,6 +59,10 @@ public class UsuariosController : ControllerBase
         u.Email = req.Email;
         u.Nombre = req.Nombre;
         u.Rol = req.Rol;
+        if (!string.IsNullOrWhiteSpace(req.ModulosPermitidos))
+        {
+            u.ModulosPermitidos = req.ModulosPermitidos.Trim();
+        }
 
         if (!string.IsNullOrWhiteSpace(req.Password))
         {
@@ -66,6 +76,7 @@ public class UsuariosController : ControllerBase
     }
 
     [HttpPut("{id:int}/activo")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> CambiarActivo(int id, [FromBody] bool activo)
     {
         var u = await _db.Usuarios.FindAsync(id);
@@ -81,6 +92,7 @@ public class UsuariosController : ControllerBase
     }
 
     [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Eliminar(int id)
     {
         var u = await _db.Usuarios.FindAsync(id);
