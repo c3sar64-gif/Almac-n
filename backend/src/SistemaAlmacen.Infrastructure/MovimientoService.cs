@@ -11,8 +11,15 @@ public class MovimientoService
     private readonly AppDbContext _db;
     public MovimientoService(AppDbContext db) { _db = db; }
 
+    private static DateTime ObtenerFechaMovimientoUtc(DateTime? fecha)
+    {
+        if (!fecha.HasValue) return DateTime.UtcNow;
+        var dt = fecha.Value;
+        return new DateTime(dt.Year, dt.Month, dt.Day, 12, 0, 0, DateTimeKind.Utc);
+    }
+
     public Task<Movimiento> RegistrarEntradaAsync(
-        int productoId, int almacenId, decimal cantidad, int usuarioId, string? nota = null)
+        int productoId, int almacenId, decimal cantidad, int usuarioId, string? nota = null, DateTime? fecha = null)
         => EjecutarConReintentosAsync(async () =>
         {
             ValidarCantidad(cantidad);
@@ -24,7 +31,7 @@ public class MovimientoService
             {
                 Tipo = TipoMovimiento.Entrada, ProductoId = productoId,
                 AlmacenDestinoId = almacenId, Cantidad = cantidad,
-                UsuarioId = usuarioId, Nota = nota, Fecha = DateTime.UtcNow
+                UsuarioId = usuarioId, Nota = nota, Fecha = ObtenerFechaMovimientoUtc(fecha)
             };
             _db.Movimientos.Add(mov);
             await _db.SaveChangesAsync();
@@ -33,7 +40,7 @@ public class MovimientoService
         });
 
     public Task<Movimiento> RegistrarSalidaAsync(
-        int productoId, int almacenId, decimal cantidad, int usuarioId, string? nota = null)
+        int productoId, int almacenId, decimal cantidad, int usuarioId, string? nota = null, DateTime? fecha = null)
         => EjecutarConReintentosAsync(async () =>
         {
             ValidarCantidad(cantidad);
@@ -48,7 +55,7 @@ public class MovimientoService
             {
                 Tipo = TipoMovimiento.Salida, ProductoId = productoId,
                 AlmacenOrigenId = almacenId, Cantidad = cantidad,
-                UsuarioId = usuarioId, Nota = nota, Fecha = DateTime.UtcNow
+                UsuarioId = usuarioId, Nota = nota, Fecha = ObtenerFechaMovimientoUtc(fecha)
             };
             _db.Movimientos.Add(mov);
             await _db.SaveChangesAsync();
@@ -58,7 +65,7 @@ public class MovimientoService
 
     public Task<Movimiento> RegistrarTransferenciaAsync(
         int productoId, int almacenOrigenId, int almacenDestinoId,
-        decimal cantidad, int usuarioId, string? nota = null)
+        decimal cantidad, int usuarioId, string? nota = null, DateTime? fecha = null)
         => EjecutarConReintentosAsync(async () =>
         {
             ValidarCantidad(cantidad);
@@ -77,7 +84,7 @@ public class MovimientoService
             {
                 Tipo = TipoMovimiento.Transferencia, ProductoId = productoId,
                 AlmacenOrigenId = almacenOrigenId, AlmacenDestinoId = almacenDestinoId,
-                Cantidad = cantidad, UsuarioId = usuarioId, Nota = nota, Fecha = DateTime.UtcNow
+                Cantidad = cantidad, UsuarioId = usuarioId, Nota = nota, Fecha = ObtenerFechaMovimientoUtc(fecha)
             };
             _db.Movimientos.Add(mov);
             await _db.SaveChangesAsync();

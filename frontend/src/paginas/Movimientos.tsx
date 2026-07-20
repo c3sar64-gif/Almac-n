@@ -14,11 +14,23 @@ export default function Movimientos() {
   const [origenId, setOrigenId] = useState('')
   const [destinoId, setDestinoId] = useState('')
   const [cantidad, setCantidad] = useState('')
+
+  const getTodayLocalStr = () => {
+    const d = new Date()
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
+
+  const [fecha, setFecha] = useState(getTodayLocalStr())
   const [nota, setNota] = useState('')
   const [error, setError] = useState('')
   const [exito, setExito] = useState('')
   const [cargando, setCargando] = useState(false)
-  const [stockDisponible, setStockDisponible] = useState<number | null>(null)
+
+  const [stockOrigen, setStockOrigen] = useState<number | null>(null)
+  const [stockDestino, setStockDestino] = useState<number | null>(null)
 
   useEffect(() => {
     api<Producto[]>('/api/productos')
@@ -32,23 +44,38 @@ export default function Movimientos() {
   const usaOrigen = tipo === 'salida' || tipo === 'transferencia'
   const usaDestino = tipo === 'entrada' || tipo === 'transferencia'
 
+  // Fetch stock para origen y destino
   useEffect(() => {
-    if (usaOrigen && productoId && origenId) {
-      setStockDisponible(null)
+    if (productoId && origenId && usaOrigen) {
       const params = new URLSearchParams()
       params.set('almacenId', origenId)
       api<any[]>(`/api/existencias?${params}`)
         .then(existencias => {
           const match = existencias.find(e => e.producto.id === Number(productoId))
-          setStockDisponible(match ? match.cantidad : 0)
+          setStockOrigen(match ? match.cantidad : 0)
         })
-        .catch(() => {
-          setStockDisponible(0)
-        })
+        .catch(() => setStockOrigen(0))
     } else {
-      setStockDisponible(null)
+      setStockOrigen(null)
     }
-  }, [productoId, origenId, usaOrigen, tipo])
+
+    if (productoId && destinoId && usaDestino) {
+      const params = new URLSearchParams()
+      params.set('almacenId', destinoId)
+      api<any[]>(`/api/existencias?${params}`)
+        .then(existencias => {
+          const match = existencias.find(e => e.producto.id === Number(productoId))
+          setStockDestino(match ? match.cantidad : 0)
+        })
+        .catch(() => setStockDestino(0))
+    } else {
+      setStockDestino(null)
+    }
+  }, [productoId, origenId, destinoId, usaOrigen, usaDestino, tipo])
+
+  const productoSel = productos.find(p => p.id === Number(productoId))
+  const unidadSel = productoSel?.unidadMedida ?? 'unidades'
+  const cantNum = Number(cantidad) || 0
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -62,7 +89,7 @@ export default function Movimientos() {
       return
     }
 
-    if (usaOrigen && stockDisponible !== null && Number(cantidad) > stockDisponible) {
+    if (usaOrigen && stockOrigen !== null && cantNum > stockOrigen) {
       setError('La cantidad ingresada supera el stock disponible en el almacén de origen.')
       setCargando(false)
       return
@@ -73,10 +100,11 @@ export default function Movimientos() {
         method: 'POST',
         body: JSON.stringify({
           productoId: Number(productoId),
-          cantidad: Number(cantidad),
+          cantidad: cantNum,
           nota: nota || null,
           almacenOrigenId: usaOrigen ? Number(origenId) : null,
           almacenDestinoId: usaDestino ? Number(destinoId) : null,
+          fecha: fecha ? `${fecha}T12:00:00Z` : null,
         }),
       })
       setExito(`Movimiento de ${tipo.toUpperCase()} registrado con éxito.`)
@@ -85,6 +113,8 @@ export default function Movimientos() {
       setProductoId('')
       setOrigenId('')
       setDestinoId('')
+      setStockOrigen(null)
+      setStockDestino(null)
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -159,56 +189,41 @@ export default function Movimientos() {
           {/* Form Fields Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
             
+            {/* Fecha del Movimiento */}
+            <div className="flex flex-col gap-base">
+              <label htmlFor="fecha" className="text-label-sm font-label-sm text-on-surface-variant flex items-center justify-between">
+                <span>Fecha del Movimiento</span>
+                <span className="text-[10px] text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">Por defecto: Hoy</span>
+              </label>
+              <input
+                id="fecha"
+                type="date"
+                value={fecha}
+                onChange={e => setFecha(e.target.value)}
+                required
+                className="w-full py-2.5 px-3 bg-white/50 border border-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-primary text-body-md font-bold text-[#001f51]"
+              />
+            </div>
+
             {/* Product Selector */}
             <div className="flex flex-col gap-base">
               <label htmlFor="producto" className="text-label-sm font-label-sm text-on-surface-variant">
-                Seleccionar Producto
+                Seleccionar Producto / Insumo
               </label>
               <select
                 id="producto"
                 value={productoId}
                 onChange={e => setProductoId(e.target.value)}
                 required
-                className="w-full py-2.5 px-3 bg-white/50 border border-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-primary text-body-md"
+                className="w-full py-2.5 px-3 bg-white/50 border border-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-primary text-body-md font-medium"
               >
                 <option value="">— Seleccionar —</option>
                 {productos.map(p => (
                   <option key={p.id} value={p.id}>
-                    {p.sku} — {p.nombre}
+                    {p.sku} — {p.nombre} ({p.unidadMedida})
                   </option>
                 ))}
               </select>
-            </div>
-
-            {/* Quantity */}
-            <div className="flex flex-col gap-base">
-              <label htmlFor="cantidad" className="text-label-sm font-label-sm text-on-surface-variant">
-                Cantidad a Mover
-              </label>
-              <input
-                id="cantidad"
-                type="number"
-                min="0.001"
-                step="any"
-                value={cantidad}
-                onChange={e => setQuantityWithUnit(e.target.value)}
-                required
-                placeholder="0.00"
-                className="w-full py-2.5 px-3 bg-white/50 border border-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-primary text-body-md"
-              />
-              {stockDisponible !== null && (
-                <div className="mt-1 flex items-center justify-between text-[11px] font-semibold">
-                  <span className="text-slate-500">
-                    Stock disponible: <strong className="text-slate-700">{stockDisponible}</strong> {productos.find(p => p.id === Number(productoId))?.unidadMedida ?? 'unidades'}
-                  </span>
-                  {Number(cantidad) > stockDisponible && (
-                    <span className="text-red-600 flex items-center gap-0.5" style={{ color: '#ba1a1a' }}>
-                      <span className="material-symbols-outlined text-[14px]">warning</span>
-                      Excede el disponible
-                    </span>
-                  )}
-                </div>
-              )}
             </div>
 
             {/* Source Warehouse (Origen) */}
@@ -222,7 +237,7 @@ export default function Movimientos() {
                   value={origenId}
                   onChange={e => setOrigenId(e.target.value)}
                   required
-                  className="w-full py-2.5 px-3 bg-white/50 border border-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-primary text-body-md"
+                  className="w-full py-2.5 px-3 bg-white/50 border border-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-primary text-body-md font-medium"
                 >
                   <option value="">— Seleccionar —</option>
                   {almacenes.map(a => (
@@ -245,7 +260,7 @@ export default function Movimientos() {
                   value={destinoId}
                   onChange={e => setDestinoId(e.target.value)}
                   required
-                  className="w-full py-2.5 px-3 bg-white/50 border border-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-primary text-body-md"
+                  className="w-full py-2.5 px-3 bg-white/50 border border-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-primary text-body-md font-medium"
                 >
                   <option value="">— Seleccionar —</option>
                   {almacenes.map(a => (
@@ -254,6 +269,88 @@ export default function Movimientos() {
                     </option>
                   ))}
                 </select>
+              </div>
+            )}
+
+            {/* Quantity */}
+            <div className="flex flex-col gap-base md:col-span-2">
+              <label htmlFor="cantidad" className="text-label-sm font-label-sm text-on-surface-variant">
+                Cantidad a Mover ({unidadSel})
+              </label>
+              <input
+                id="cantidad"
+                type="number"
+                min="0.001"
+                step="any"
+                value={cantidad}
+                onChange={e => setCantidad(e.target.value)}
+                required
+                placeholder="0.00"
+                className="w-full py-2.5 px-3 bg-white/50 border border-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-primary text-body-lg font-extrabold text-[#001f51]"
+              />
+            </div>
+
+            {/* Live Stock Kardex Calculation Preview Box */}
+            {productoId && (stockOrigen !== null || stockDestino !== null) && (
+              <div className="md:col-span-2 bg-gradient-to-r from-slate-900 to-[#001f51] p-4 rounded-xl text-white shadow-lg animate-fadeIn">
+                <div className="text-[11px] font-extrabold text-blue-300 uppercase tracking-wider mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-base text-blue-400">calculate</span>
+                    <span>Proyección de Saldo en Kardex ({tipo.toUpperCase()})</span>
+                  </div>
+                  <span className="text-[10px] text-slate-300 font-normal">Cálculo Automático</span>
+                </div>
+
+                {tipo === 'entrada' && stockDestino !== null && (
+                  <div className="grid grid-cols-3 gap-3 text-center">
+                    <div className="bg-white/10 p-2.5 rounded-lg border border-white/10">
+                      <span className="text-[10px] text-slate-300 block uppercase font-medium">Saldo Actual</span>
+                      <span className="text-base font-extrabold text-white">{stockDestino} {unidadSel}</span>
+                    </div>
+                    <div className="bg-emerald-500/20 p-2.5 rounded-lg border border-emerald-400/30">
+                      <span className="text-[10px] text-emerald-300 block uppercase font-medium">Ingreso</span>
+                      <span className="text-base font-extrabold text-emerald-300">+{cantNum} {unidadSel}</span>
+                    </div>
+                    <div className="bg-blue-500/30 p-2.5 rounded-lg border border-blue-400/40">
+                      <span className="text-[10px] text-blue-200 block uppercase font-medium">Saldo Resultante</span>
+                      <span className="text-base font-black text-white">{stockDestino + cantNum} {unidadSel}</span>
+                    </div>
+                  </div>
+                )}
+
+                {tipo === 'salida' && stockOrigen !== null && (
+                  <div className="grid grid-cols-3 gap-3 text-center">
+                    <div className="bg-white/10 p-2.5 rounded-lg border border-white/10">
+                      <span className="text-[10px] text-slate-300 block uppercase font-medium">Saldo Actual</span>
+                      <span className="text-base font-extrabold text-white">{stockOrigen} {unidadSel}</span>
+                    </div>
+                    <div className="bg-amber-500/20 p-2.5 rounded-lg border border-amber-400/30">
+                      <span className="text-[10px] text-amber-300 block uppercase font-medium">Salida</span>
+                      <span className="text-base font-extrabold text-amber-300">-{cantNum} {unidadSel}</span>
+                    </div>
+                    <div className={`p-2.5 rounded-lg border ${stockOrigen - cantNum < 0 ? 'bg-rose-500/30 border-rose-400 text-rose-200' : 'bg-blue-500/30 border-blue-400/40 text-white'}`}>
+                      <span className="text-[10px] block uppercase font-medium opacity-80">Saldo Resultante</span>
+                      <span className="text-base font-black">{stockOrigen - cantNum} {unidadSel}</span>
+                    </div>
+                  </div>
+                )}
+
+                {tipo === 'transferencia' && (
+                  <div className="space-y-2">
+                    {stockOrigen !== null && (
+                      <div className="flex items-center justify-between bg-white/10 px-3 py-2 rounded-lg text-xs">
+                        <span className="text-slate-300 font-medium">Origen: Saldo {stockOrigen} ➔ <strong className="text-amber-300">Salida -{cantNum}</strong></span>
+                        <span className={`font-black ${stockOrigen - cantNum < 0 ? 'text-rose-300' : 'text-white'}`}>Nuevo Saldo Origen: {stockOrigen - cantNum} {unidadSel}</span>
+                      </div>
+                    )}
+                    {stockDestino !== null && (
+                      <div className="flex items-center justify-between bg-white/10 px-3 py-2 rounded-lg text-xs">
+                        <span className="text-slate-300 font-medium">Destino: Saldo {stockDestino} ➔ <strong className="text-emerald-300">Ingreso +{cantNum}</strong></span>
+                        <span className="font-black text-emerald-300">Nuevo Saldo Destino: {stockDestino + cantNum} {unidadSel}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -293,7 +390,7 @@ export default function Movimientos() {
           <div className="flex justify-end">
             <button
               type="submit"
-              disabled={cargando || (usaOrigen && stockDisponible !== null && Number(cantidad) > stockDisponible)}
+              disabled={cargando || (usaOrigen && stockOrigen !== null && cantNum > stockOrigen)}
               className="w-full sm:w-auto bg-primary-container text-white px-stack-lg py-3 rounded-lg font-bold shadow-lg shadow-primary-container/20 hover:scale-[1.01] active:scale-[0.99] hover:bg-primary transition-all disabled:opacity-50 flex items-center justify-center gap-stack-sm cursor-pointer"
             >
               {cargando ? (
@@ -313,9 +410,4 @@ export default function Movimientos() {
       </div>
     </>
   )
-
-  // Helper to handle quantity input
-  function setQuantityWithUnit(val: string) {
-    setCantidad(val)
-  }
 }

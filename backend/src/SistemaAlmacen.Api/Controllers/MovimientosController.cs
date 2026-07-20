@@ -10,7 +10,7 @@ namespace SistemaAlmacen.Api.Controllers;
 
 public record MovimientoRequest(
     int ProductoId, decimal Cantidad, string? Nota,
-    int? AlmacenOrigenId, int? AlmacenDestinoId);
+    int? AlmacenOrigenId, int? AlmacenDestinoId, DateTime? Fecha);
 
 [ApiController]
 [Route("api/movimientos")]
@@ -32,7 +32,7 @@ public class MovimientosController : ControllerBase
     {
         if (r.AlmacenDestinoId is null)
             throw new ReglaNegocioException("Falta el almacén de destino.");
-        return await _svc.RegistrarEntradaAsync(r.ProductoId, r.AlmacenDestinoId.Value, r.Cantidad, UsuarioId, r.Nota);
+        return await _svc.RegistrarEntradaAsync(r.ProductoId, r.AlmacenDestinoId.Value, r.Cantidad, UsuarioId, r.Nota, r.Fecha);
     }
 
     [HttpPost("salida")]
@@ -40,7 +40,7 @@ public class MovimientosController : ControllerBase
     {
         if (r.AlmacenOrigenId is null)
             throw new ReglaNegocioException("Falta el almacén de origen.");
-        return await _svc.RegistrarSalidaAsync(r.ProductoId, r.AlmacenOrigenId.Value, r.Cantidad, UsuarioId, r.Nota);
+        return await _svc.RegistrarSalidaAsync(r.ProductoId, r.AlmacenOrigenId.Value, r.Cantidad, UsuarioId, r.Nota, r.Fecha);
     }
 
     [HttpPost("transferencia")]
@@ -51,7 +51,7 @@ public class MovimientosController : ControllerBase
         if (r.AlmacenDestinoId is null)
             throw new ReglaNegocioException("Falta el almacén de destino.");
         return await _svc.RegistrarTransferenciaAsync(
-            r.ProductoId, r.AlmacenOrigenId.Value, r.AlmacenDestinoId.Value, r.Cantidad, UsuarioId, r.Nota);
+            r.ProductoId, r.AlmacenOrigenId.Value, r.AlmacenDestinoId.Value, r.Cantidad, UsuarioId, r.Nota, r.Fecha);
     }
 
     // Historial con filtros: sirve también como reporte de movimientos por rango de fechas.
