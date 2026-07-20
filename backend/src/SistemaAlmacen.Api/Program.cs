@@ -41,8 +41,12 @@ builder.Services.AddControllers().AddJsonOptions(o =>
 
 builder.Services.AddDbContext<AppDbContext>(o =>
 {
-    var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
+    var rawConnection = Environment.GetEnvironmentVariable("DATABASE_URL")
+        ?? Environment.GetEnvironmentVariable("ConnectionStrings__Default")
         ?? builder.Configuration.GetConnectionString("Default");
+
+    var connectionString = ParsePostgresConnectionString(rawConnection);
+
     o.UseNpgsql(connectionString, npgsqlOptions =>
     {
         npgsqlOptions.EnableRetryOnFailure(
@@ -51,6 +55,28 @@ builder.Services.AddDbContext<AppDbContext>(o =>
             errorCodesToAdd: null);
     });
 });
+
+static string ParsePostgresConnectionString(string? raw)
+{
+    if (string.IsNullOrWhiteSpace(raw)) return "";
+
+    // Si viene en formato URL (postgres://user:pass@host:port/db o postgresql://)
+    if (raw.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
+        raw.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+    {
+        var uri = new Uri(raw);
+        var userInfo = uri.UserInfo.Split(':');
+        var user = userInfo.Length > 0 ? Uri.UnescapeDataString(userInfo[0]) : "";
+        var pass = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
+        var host = uri.Host;
+        var port = uri.Port > 0 ? uri.Port : 5432;
+        var db = uri.AbsolutePath.TrimStart('/');
+
+        return $"Host={host};Port={port};Database={db};Username={user};Password={pass};SSL Mode=Require;Trust Server Certificate=true";
+    }
+
+    return raw;
+}
 
 builder.Services.AddScoped<MovimientoService>();
 
@@ -89,23 +115,27 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddAuthorization();
 
-builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
+builder.Services.AddCors(options =>
 {
-    if (origenesPermitidos.Length > 0 && !origenesPermitidos.Contains("*"))
+    options.AddDefaultPolicy(policy =>
     {
-        p.WithOrigins(origenesPermitidos).AllowAnyHeader().AllowAnyMethod();
-    }
-    else
-    {
-        p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
-    }
-}));
+        policy.SetIsOriginAllowed(_ => true)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
 
 var app = builder.Build();
 
-// Seed: primer usuario admin si la tabla está vacía.
-using (var scope = app.Services.CreateScope())
+app.UseCors();
+app.UseMiddleware<SistemaAlmacen.Api.ManejadorErrores>();
+app.UseStaticFiles();
+
+// Seed & Auto-Migrate DB en segundo plano / inicio tolerante a fallos
+try
 {
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
     try
@@ -130,23 +160,24 @@ using (var scope = app.Services.CreateScope())
     {
         Console.WriteLine($"Error initializing DB tables: {ex.Message}");
     }
+
     if (!db.Usuarios.Any())
     {
         db.Usuarios.Add(new Usuario
         {
             Email = "admin@almacen.local",
             Nombre = "Administrador",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(
-                builder.Configuration["Seed:AdminPassword"] ?? "Admin123!"),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminPass),
             Rol = Rol.Admin,
         });
         db.SaveChanges();
     }
 }
+catch (Exception ex)
+{
+    Console.WriteLine($"[DB MIGRATION WARNING] No se pudo conectar a la base de datos PostgreSQL: {ex.Message}");
+}
 
-app.UseMiddleware<SistemaAlmacen.Api.ManejadorErrores>();
-app.UseStaticFiles();
-app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
