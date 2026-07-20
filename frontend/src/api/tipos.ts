@@ -41,6 +41,7 @@ export interface Sesion {
   token: string
   nombre: string
   rol: 'Admin' | 'Chofer' | 'Almacenero' | 'Encargado' | string
+  modulosPermitidos?: string
 }
 
 export interface UsuarioLista {
@@ -49,6 +50,7 @@ export interface UsuarioLista {
   nombre: string
   rol: string
   activo: boolean
+  modulosPermitidos?: string
 }
 
 export interface TareaLogistica {
@@ -64,6 +66,10 @@ export interface TareaLogistica {
   estado: 'Pendiente' | 'EnRuta' | 'Completada' | 'Cancelada'
   estadoNum: number
   fechaAsignacion: string
+  fechaProgramada: string
+  horaInicio: string
+  horaFin: string
   fechaCompletado?: string | null
   notasChofer?: string | null
+  comprobanteUrl?: string | null
 }

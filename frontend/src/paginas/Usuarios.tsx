@@ -4,6 +4,16 @@ import { api } from '../api/cliente'
 import type { UsuarioLista } from '../api/tipos'
 import { useAuth } from '../auth/AuthContext'
 
+const MODULOS_DISPONIBLES = [
+  { id: 'productos', nombre: 'Productos & Catálogo', icono: 'inventory_2', desc: 'Acceso a lista y registro de productos' },
+  { id: 'almacenes', nombre: 'Almacenes & Stock', icono: 'warehouse', desc: 'Gestión de bodegas y existencias' },
+  { id: 'movimientos', nombre: 'Movimientos & Transferencias', icono: 'swap_horiz', desc: 'Kardex de entradas, salidas y traspasos' },
+  { id: 'logistica', nombre: 'Logística Choferes & Hoja Ruta', icono: 'local_shipping', desc: 'Asignación y ejecución de entregas' },
+  { id: 'reportes', nombre: 'Reportes & Auditoría', icono: 'analytics', desc: 'Estadísticas e historial de actividades' },
+  { id: 'usuarios', nombre: 'Gestión de Usuarios & Permisos', icono: 'group', desc: 'Administración de cuentas y seguridad' },
+]
+
+const TODOS_MODULOS = MODULOS_DISPONIBLES.map(m => m.id)
 const vacio = { email: '', nombre: '', password: '', rol: 'Almacenero' }
 
 export default function Usuarios() {
@@ -12,7 +22,9 @@ export default function Usuarios() {
   const esAdmin = sesion?.rol === 'Admin'
   const [usuarios, setUsuarios] = useState<UsuarioLista[]>([])
   const [form, setForm] = useState(vacio)
+  const [modulosSeleccionados, setModulosSeleccionados] = useState<string[]>(TODOS_MODULOS)
   const [editando, setEditando] = useState<number | null>(null)
+  const [usuarioAEliminar, setUsuarioAEliminar] = useState<UsuarioLista | null>(null)
   const [error, setError] = useState('')
   const [exito, setExito] = useState('')
   const [cargando, setCargando] = useState(false)
@@ -29,19 +41,29 @@ export default function Usuarios() {
     if (esAdmin) cargar().catch(e => setError(e.message))
   }, [esAdmin])
 
+  const toggleModulo = (id: string) => {
+    setModulosSeleccionados(prev =>
+      prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]
+    )
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
     setExito('')
     setCargando(true)
     try {
+      const payload = {
+        ...form,
+        modulosPermitidos: modulosSeleccionados.join(','),
+      }
       if (editando === null) {
         if (!form.password) {
           setError('La contraseña es obligatoria para nuevos usuarios.')
           setCargando(false)
           return
         }
-        await api('/api/usuarios', { method: 'POST', body: JSON.stringify(form) })
+        await api('/api/usuarios', { method: 'POST', body: JSON.stringify(payload) })
         setExito('Usuario creado con éxito.')
       } else {
         await api(`/api/usuarios/${editando}`, {
@@ -51,11 +73,13 @@ export default function Usuarios() {
             nombre: form.nombre,
             rol: form.rol,
             password: form.password || null,
+            modulosPermitidos: modulosSeleccionados.join(','),
           }),
         })
         setExito('Usuario actualizado con éxito.')
       }
       setForm(vacio)
+      setModulosSeleccionados(TODOS_MODULOS)
       setEditando(null)
       await cargar()
     } catch (err: any) {
@@ -80,10 +104,14 @@ export default function Usuarios() {
     }
   }
 
-  async function eliminarUsuario(u: UsuarioLista) {
-    if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente al usuario "${u.nombre}" (${u.email})?`)) {
-      return
-    }
+  function solicitarEliminarUsuario(u: UsuarioLista) {
+    setUsuarioAEliminar(u)
+  }
+
+  async function ejecutarEliminarUsuario() {
+    if (!usuarioAEliminar) return
+    const u = usuarioAEliminar
+    setUsuarioAEliminar(null)
     setError('')
     setExito('')
     try {
@@ -103,6 +131,10 @@ export default function Usuarios() {
       password: '', // Contraseña en blanco por defecto al editar
       rol: u.rol,
     })
+    const modulos = u.modulosPermitidos
+      ? u.modulosPermitidos.split(',')
+      : TODOS_MODULOS
+    setModulosSeleccionados(modulos)
     setError('')
     setExito('')
   }
@@ -229,6 +261,55 @@ export default function Usuarios() {
               </select>
             </div>
 
+            {/* CHECKLIST DE MÓDULOS PERMITIDOS */}
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-tight">
+                  MÓDULOS PERMITIDOS (CHECKLIST)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setModulosSeleccionados(modulosSeleccionados.length === TODOS_MODULOS.length ? [] : TODOS_MODULOS)}
+                  className="text-[11px] font-bold text-[#3755c3] hover:underline cursor-pointer"
+                >
+                  {modulosSeleccionados.length === TODOS_MODULOS.length ? 'Desmarcar todos' : 'Marcar todos'}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2">
+                {MODULOS_DISPONIBLES.map(mod => {
+                  const check = modulosSeleccionados.includes(mod.id)
+                  return (
+                    <label
+                      key={mod.id}
+                      onClick={() => toggleModulo(mod.id)}
+                      className={`flex items-center gap-3 p-2 rounded-lg border transition-all cursor-pointer select-none ${
+                        check
+                          ? 'bg-white border-[#3755c3] shadow-2xs'
+                          : 'bg-slate-100/70 border-slate-200 opacity-60 hover:opacity-100'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={check}
+                        onChange={() => {}}
+                        className="w-4 h-4 text-[#3755c3] rounded border-slate-300 focus:ring-[#3755c3] cursor-pointer"
+                      />
+                      <span className={`material-symbols-outlined text-lg ${check ? 'text-[#3755c3]' : 'text-slate-400'}`}>
+                        {mod.icono}
+                      </span>
+                      <div className="text-xs">
+                        <span className={`font-bold block ${check ? 'text-slate-800' : 'text-slate-500'}`}>
+                          {mod.nombre}
+                        </span>
+                        <span className="text-[10px] text-slate-400 block">{mod.desc}</span>
+                      </div>
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+
             {/* Dynamic Permissions Description */}
             <div className="flex items-start gap-3 p-3 bg-emerald-50 border border-emerald-100 rounded-lg">
               <span className="material-symbols-outlined text-emerald-600 mt-0.5 text-lg">check_circle</span>
@@ -304,23 +385,35 @@ export default function Usuarios() {
               <table className="w-full text-left">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
-                    <th className="px-8 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">USUARIO / EMAIL</th>
-                    <th className="px-8 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">NOMBRE</th>
-                    <th className="px-8 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">ROL</th>
-                    <th className="px-8 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider text-center">ESTADO</th>
-                    <th className="px-8 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">ACCIONES</th>
+                    <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">USUARIO / EMAIL</th>
+                    <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">NOMBRE</th>
+                    <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">ROL</th>
+                    <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">MÓDULOS</th>
+                    <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider text-center">ESTADO</th>
+                    <th className="px-6 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">ACCIONES</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {usuariosPaginados.map(u => (
-                    <tr key={u.id} className="hover:bg-slate-50/50 transition-colors group">
-                      <td className="px-8 py-4.5 font-semibold text-sm text-[#001f51]">{u.email}</td>
-                      <td className="px-8 py-4.5 text-sm text-slate-500">{u.nombre}</td>
-                      <td className="px-8 py-4.5">
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${u.rol === 'Admin' ? 'bg-[#d9e2ff] text-[#173bab]' : 'bg-slate-100 text-slate-500'}`}>
-                          {u.rol}
-                        </span>
-                      </td>
+                  {usuariosPaginados.map(u => {
+                    const mods = u.modulosPermitidos ? u.modulosPermitidos.split(',') : TODOS_MODULOS
+                    return (
+                      <tr key={u.id} className="hover:bg-slate-50/50 transition-colors group">
+                        <td className="px-6 py-4 font-semibold text-sm text-[#001f51]">{u.email}</td>
+                        <td className="px-6 py-4 text-sm text-slate-500">{u.nombre}</td>
+                        <td className="px-6 py-4">
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${u.rol === 'Admin' ? 'bg-[#d9e2ff] text-[#173bab]' : 'bg-slate-100 text-slate-500'}`}>
+                            {u.rol}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-wrap gap-1 max-w-[200px]">
+                            {mods.map(m => (
+                              <span key={m} className="px-1.5 py-0.5 bg-blue-50 text-[#3755c3] border border-blue-100 rounded text-[9px] font-bold uppercase">
+                                {m}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
                       <td className="px-8 py-4.5 text-center">
                         <button
                           onClick={() => cambiarActivo(u)}
@@ -343,7 +436,7 @@ export default function Usuarios() {
                             <span className="material-symbols-outlined text-[18px]">edit</span>
                           </button>
                           <button
-                            onClick={() => eliminarUsuario(u)}
+                            onClick={() => solicitarEliminarUsuario(u)}
                             className="w-9 h-9 flex items-center justify-center rounded-lg border border-slate-200 hover:bg-red-50 hover:text-[#ba1a1a] transition-all cursor-pointer !text-slate-500 !bg-white !p-0"
                             title="Eliminar usuario"
                           >
@@ -352,7 +445,8 @@ export default function Usuarios() {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -418,6 +512,42 @@ export default function Usuarios() {
           </div>
         </div>
       </div>
+
+      {/* Modal de Confirmación de Eliminación de Usuario Premium */}
+      {usuarioAEliminar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-2xl max-w-sm w-full p-6 mx-4 text-center space-y-4">
+            <div className="w-14 h-14 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto shadow-inner">
+              <span className="material-symbols-outlined text-3xl">warning</span>
+            </div>
+
+            <div>
+              <h3 className="text-base font-bold text-[#001f51]">¿Eliminar Usuario?</h3>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                ¿Estás seguro de eliminar permanentemente a <strong>"{usuarioAEliminar.nombre}"</strong> ({usuarioAEliminar.email})?
+              </p>
+            </div>
+
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setUsuarioAEliminar(null)}
+                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-xs rounded-xl transition-all cursor-pointer !bg-white"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={ejecutarEliminarUsuario}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-base">delete</span>
+                <span>Sí, Eliminar</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

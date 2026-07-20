@@ -1,11 +1,11 @@
 const CLAVE_SESION = 'almacen.sesion'
 
-export function obtenerSesion(): { token: string; nombre: string; rol: string } | null {
+export function obtenerSesion(): { token: string; nombre: string; rol: string; modulosPermitidos?: string } | null {
   const raw = localStorage.getItem(CLAVE_SESION)
   return raw ? JSON.parse(raw) : null
 }
 
-export function guardarSesion(s: { token: string; nombre: string; rol: string }) {
+export function guardarSesion(s: { token: string; nombre: string; rol: string; modulosPermitidos?: string }) {
   localStorage.setItem(CLAVE_SESION, JSON.stringify(s))
 }
 
@@ -25,13 +25,20 @@ export async function api<T>(ruta: string, init?: RequestInit): Promise<T> {
   const sesion = obtenerSesion()
   const baseUrl = import.meta.env.VITE_API_URL || '';
   const url = ruta.startsWith('http') ? ruta : `${baseUrl.replace(/\/$/, '')}/${ruta.replace(/^\//, '')}`
+  
+  const isFormData = init?.body instanceof FormData
+  const headers: Record<string, string> = {
+    ...(sesion ? { Authorization: `Bearer ${sesion.token}` } : {}),
+    ...(init?.headers as Record<string, string>),
+  }
+
+  if (!isFormData && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json'
+  }
+
   const res = await fetch(url, {
     ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(sesion ? { Authorization: `Bearer ${sesion.token}` } : {}),
-      ...init?.headers,
-    },
+    headers,
   })
   // Solo tratar 401 como sesión expirada si había una sesión activa; el 401
   // del login (credenciales inválidas) debe llegar al formulario con su mensaje.

@@ -38,9 +38,9 @@ export default function Login() {
           <div className="relative z-20 flex flex-col justify-between p-margin-desktop w-full text-white">
             <div className="flex items-center gap-stack-sm">
               <img
-                alt="OVO PLUS Logo"
-                className="h-12 w-auto brightness-0 invert"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQLKSlxTB17hYU2TZM2JfC1ZcRt_rWH2U1ZhYWYh2xkSVp3tttj74FPiK_xCVmhm4_AxTdXBy54hCLlA15Qm-xdwyTF22Sf5j5Y35Y7_D3E-F-aW76rPLHyTzhQ-RuHkNvBZv1ufaPm_umB3i4hhlYlXq_b-fuV-pXFcs_k1Nodwoj_WAwAmX8zAwKORO7EQGE6fh3IyQq2nicpA_GhgarrM7GDrEVOPuvmIYgIzQPAjSoIt64hW0dYzKgEdIrr-Y1NFX2DVuP4MKW"
+                alt="OVOPLUS Logo"
+                className="h-16 w-auto object-contain bg-white/90 p-2 rounded-xl shadow-md"
+                src="/ovoplus_logo.png"
               />
             </div>
             <div className="max-w-xl">
@@ -71,9 +71,9 @@ export default function Login() {
             {/* Mobile Logo only */}
             <div className="lg:hidden mb-stack-lg text-center">
               <img
-                alt="OVO PLUS Logo"
-                className="h-10 mx-auto"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQLKSlxTB17hYU2TZM2JfC1ZcRt_rWH2U1ZhYWYh2xkSVp3tttj74FPiK_xCVmhm4_AxTdXBy54hCLlA15Qm-xdwyTF22Sf5j5Y35Y7_D3E-F-aW76rPLHyTzhQ-RuHkNvBZv1ufaPm_umB3i4hhlYlXq_b-fuV-pXFcs_k1Nodwoj_WAwAmX8zAwKORO7EQGE6fh3IyQq2nicpA_GhgarrM7GDrEVOPuvmIYgIzQPAjSoIt64hW0dYzKgEdIrr-Y1NFX2DVuP4MKW"
+                alt="OVOPLUS Logo"
+                className="h-14 mx-auto object-contain"
+                src="/ovoplus_logo.png"
               />
             </div>
             <div className="mb-stack-lg">
@@ -165,24 +165,6 @@ export default function Login() {
                 )}
               </button>
             </form>
-            <div className="relative my-stack-lg">
-              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-outline-variant"></div></div>
-              <div className="relative flex justify-center text-label-sm uppercase"><span className="px-stack-md bg-surface text-on-surface-variant">O continuar con</span></div>
-            </div>
-            <div className="grid grid-cols-2 gap-stack-md">
-              <button className="flex items-center justify-center gap-stack-sm h-12 border border-outline-variant hover:bg-surface-container-low transition-colors rounded-lg font-label-md text-label-md text-on-surface">
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z" fill="currentColor"></path>
-                </svg>
-                <span>Google</span>
-              </button>
-              <button className="flex items-center justify-center gap-stack-sm h-12 border border-outline-variant hover:bg-surface-container-low transition-colors rounded-lg font-label-md text-label-md text-on-surface">
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  <path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4z" fill="currentColor"></path>
-                </svg>
-                <span>Microsoft</span>
-              </button>
-            </div>
           </div>
           {/* Footer Status */}
           <div className="absolute bottom-margin-desktop w-full max-w-md px-stack-md">
@@ -192,7 +174,7 @@ export default function Login() {
                 <span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">Sistema: Operativo</span>
               </div>
               <div className="text-on-surface-variant font-label-sm text-label-sm">
-                ID Terminal: <span className="font-bold">WH-04-A2</span>
+                <span className="font-bold">c3sar64 versión: 0.0.001</span>
               </div>
             </div>
           </div>
