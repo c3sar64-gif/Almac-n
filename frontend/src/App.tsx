@@ -8,6 +8,7 @@ import Almacenes from './paginas/Almacenes'
 import Movimientos from './paginas/Movimientos'
 import Reportes from './paginas/Reportes'
 import Usuarios from './paginas/Usuarios'
+import LogisticaChoferes from './paginas/LogisticaChoferes'
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
           <Route path="/almacenes" element={<Almacenes />} />
           <Route path="/movimientos" element={<Movimientos />} />
           <Route path="/reportes" element={<Reportes />} />
+          <Route path="/logistica-choferes" element={<LogisticaChoferes />} />
           <Route path="/usuarios" element={<Usuarios />} />
         </Route>
       </Route>

@@ -12,6 +12,7 @@ public class AppDbContext : DbContext
     public DbSet<Existencia> Existencias => Set<Existencia>();
     public DbSet<Movimiento> Movimientos => Set<Movimiento>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
+    public DbSet<TareaLogistica> TareasLogistica => Set<TareaLogistica>();
 
     protected override void OnModelCreating(ModelBuilder mb)
     {
@@ -29,5 +30,15 @@ public class AppDbContext : DbContext
         mb.Entity<Movimiento>()
             .HasOne(m => m.AlmacenDestino).WithMany()
             .HasForeignKey(m => m.AlmacenDestinoId).OnDelete(DeleteBehavior.Restrict);
+
+        mb.Entity<TareaLogistica>()
+            .HasOne(t => t.Chofer).WithMany()
+            .HasForeignKey(t => t.ChoferId).OnDelete(DeleteBehavior.Restrict);
+        mb.Entity<TareaLogistica>()
+            .HasOne(t => t.AlmacenOrigen).WithMany()
+            .HasForeignKey(t => t.AlmacenOrigenId).OnDelete(DeleteBehavior.Restrict);
+        mb.Entity<TareaLogistica>()
+            .HasOne(t => t.AlmacenDestino).WithMany()
+            .HasForeignKey(t => t.AlmacenDestinoId).OnDelete(DeleteBehavior.Restrict);
     }
 }

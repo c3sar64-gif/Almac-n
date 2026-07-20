@@ -40,7 +40,7 @@ export interface Movimiento {
 export interface Sesion {
   token: string
   nombre: string
-  rol: 'Admin' | 'Operador'
+  rol: 'Admin' | 'Chofer' | 'Almacenero' | 'Encargado' | string
 }
 
 export interface UsuarioLista {
@@ -49,4 +49,21 @@ export interface UsuarioLista {
   nombre: string
   rol: string
   activo: boolean
+}
+
+export interface TareaLogistica {
+  id: number
+  titulo: string
+  descripcion?: string | null
+  choferId: number
+  chofer?: { id: number; nombre: string; email: string } | null
+  almacenOrigenId?: number | null
+  almacenOrigen?: string | null
+  almacenDestinoId?: number | null
+  almacenDestino?: string | null
+  estado: 'Pendiente' | 'EnRuta' | 'Completada' | 'Cancelada'
+  estadoNum: number
+  fechaAsignacion: string
+  fechaCompletado?: string | null
+  notasChofer?: string | null
 }

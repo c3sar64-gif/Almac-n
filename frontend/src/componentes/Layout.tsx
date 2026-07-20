@@ -6,6 +6,7 @@ const enlaces = [
   { a: '/productos', texto: 'Productos' },
   { a: '/almacenes', texto: 'Almacenes' },
   { a: '/movimientos', texto: 'Movimientos' },
+  { a: '/logistica-choferes', texto: 'Logística Choferes' },
   { a: '/reportes', texto: 'Reportes' },
 ]
 
@@ -18,7 +19,7 @@ export default function Layout() {
         {/* Navigation Shell */}
         <nav className="bg-white border-b border-slate-200 sticky top-0 z-50 flex justify-between items-center w-full px-margin-desktop h-16">
           <div className="flex items-center gap-stack-md h-full">
-            <span className="font-headline-md text-headline-md font-bold text-primary tracking-tight mr-8">OVO PLUS</span>
+            <span className="font-headline-md text-headline-md font-bold text-primary tracking-tight mr-8">OVOPLUS</span>
             <div className="hidden md:flex items-center gap-6 h-full">
               {enlaces.map(e => (
                 <NavLink
@@ -90,8 +91,8 @@ export default function Layout() {
       {/* Footer Shell */}
       <footer className="w-full py-6 px-margin-desktop flex flex-col md:flex-row justify-between items-center gap-stack-md bg-white border-t border-slate-200 mt-stack-lg">
         <div className="flex flex-col gap-base">
-          <span className="font-label-sm text-label-sm font-bold text-on-surface-variant">OVO PLUS LOGISTICS</span>
-          <p className="font-label-md text-label-md text-secondary">© 2026 OVO PLUS Logistics Systems. All rights reserved.</p>
+          <span className="font-label-sm text-label-sm font-bold text-on-surface-variant">OVOPLUS LOGISTICS</span>
+          <p className="font-label-md text-label-md text-secondary">© 2026 OVOPLUS Logistics Systems. All rights reserved.</p>
         </div>
         <div className="flex gap-6">
           <a className="text-slate-500 font-label-md text-label-md hover:text-primary transition-colors cursor-pointer" href="#">Support</a>
