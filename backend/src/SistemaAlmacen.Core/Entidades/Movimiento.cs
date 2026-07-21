@@ -17,4 +17,6 @@ public class Movimiento
     public int UsuarioId { get; set; }
     public Usuario? Usuario { get; set; }
     public string? Nota { get; set; }
+    public string? NumeroLote { get; set; }
+    public DateTime? FechaVencimiento { get; set; }
 }

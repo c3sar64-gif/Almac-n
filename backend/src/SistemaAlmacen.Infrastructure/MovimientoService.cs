@@ -19,7 +19,7 @@ public class MovimientoService
     }
 
     public Task<Movimiento> RegistrarEntradaAsync(
-        int productoId, int almacenId, decimal cantidad, int usuarioId, string? nota = null, DateTime? fecha = null)
+        int productoId, int almacenId, decimal cantidad, int usuarioId, string? nota = null, DateTime? fecha = null, string? numeroLote = null, DateTime? fechaVencimiento = null)
         => EjecutarConReintentosAsync(async () =>
         {
             ValidarCantidad(cantidad);
@@ -27,11 +27,39 @@ public class MovimientoService
             await using var tx = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             var existencia = await ObtenerOCrearExistenciaAsync(productoId, almacenId);
             existencia.Cantidad += cantidad;
+
+            DateTime? fechaVencUtc = fechaVencimiento.HasValue ? ObtenerFechaMovimientoUtc(fechaVencimiento) : null;
+            var loteStr = string.IsNullOrWhiteSpace(numeroLote) ? null : numeroLote.Trim();
+
+            if (!string.IsNullOrEmpty(loteStr))
+            {
+                var lote = await _db.Lotes.FirstOrDefaultAsync(l => l.ProductoId == productoId && l.AlmacenId == almacenId && l.CodigoLote == loteStr);
+                if (lote is null)
+                {
+                    lote = new Lote
+                    {
+                        ProductoId = productoId,
+                        AlmacenId = almacenId,
+                        CodigoLote = loteStr,
+                        FechaVencimiento = fechaVencUtc,
+                        Cantidad = cantidad,
+                        FechaIngreso = DateTime.UtcNow
+                    };
+                    _db.Lotes.Add(lote);
+                }
+                else
+                {
+                    lote.Cantidad += cantidad;
+                    if (fechaVencUtc.HasValue) lote.FechaVencimiento = fechaVencUtc;
+                }
+            }
+
             var mov = new Movimiento
             {
                 Tipo = TipoMovimiento.Entrada, ProductoId = productoId,
                 AlmacenDestinoId = almacenId, Cantidad = cantidad,
-                UsuarioId = usuarioId, Nota = nota, Fecha = ObtenerFechaMovimientoUtc(fecha)
+                UsuarioId = usuarioId, Nota = nota, Fecha = ObtenerFechaMovimientoUtc(fecha),
+                NumeroLote = loteStr, FechaVencimiento = fechaVencUtc
             };
             _db.Movimientos.Add(mov);
             await _db.SaveChangesAsync();
@@ -40,7 +68,7 @@ public class MovimientoService
         });
 
     public Task<Movimiento> RegistrarSalidaAsync(
-        int productoId, int almacenId, decimal cantidad, int usuarioId, string? nota = null, DateTime? fecha = null)
+        int productoId, int almacenId, decimal cantidad, int usuarioId, string? nota = null, DateTime? fecha = null, string? numeroLote = null, DateTime? fechaVencimiento = null)
         => EjecutarConReintentosAsync(async () =>
         {
             ValidarCantidad(cantidad);
@@ -51,11 +79,38 @@ public class MovimientoService
                 throw new ReglaNegocioException(
                     $"Stock insuficiente: hay {existencia.Cantidad} y se pidieron {cantidad}.");
             existencia.Cantidad -= cantidad;
+
+            DateTime? fechaVencUtc = fechaVencimiento.HasValue ? ObtenerFechaMovimientoUtc(fechaVencimiento) : null;
+            var loteStr = string.IsNullOrWhiteSpace(numeroLote) ? null : numeroLote.Trim();
+
+            // Aplicar FEFO sobre la tabla Lotes si existen lotes activos
+            var lotesDisponibles = await _db.Lotes
+                .Where(l => l.ProductoId == productoId && l.AlmacenId == almacenId && l.Cantidad > 0)
+                .OrderBy(l => l.FechaVencimiento.HasValue ? 0 : 1)
+                .ThenBy(l => l.FechaVencimiento)
+                .ThenBy(l => l.FechaIngreso)
+                .ToListAsync();
+
+            if (lotesDisponibles.Any())
+            {
+                decimal porDescontar = cantidad;
+                foreach (var lote in lotesDisponibles)
+                {
+                    if (porDescontar <= 0) break;
+                    decimal descuento = Math.Min(lote.Cantidad, porDescontar);
+                    lote.Cantidad -= descuento;
+                    porDescontar -= descuento;
+                    if (string.IsNullOrEmpty(loteStr)) loteStr = lote.CodigoLote;
+                    if (!fechaVencUtc.HasValue) fechaVencUtc = lote.FechaVencimiento;
+                }
+            }
+
             var mov = new Movimiento
             {
                 Tipo = TipoMovimiento.Salida, ProductoId = productoId,
                 AlmacenOrigenId = almacenId, Cantidad = cantidad,
-                UsuarioId = usuarioId, Nota = nota, Fecha = ObtenerFechaMovimientoUtc(fecha)
+                UsuarioId = usuarioId, Nota = nota, Fecha = ObtenerFechaMovimientoUtc(fecha),
+                NumeroLote = loteStr, FechaVencimiento = fechaVencUtc
             };
             _db.Movimientos.Add(mov);
             await _db.SaveChangesAsync();
@@ -65,7 +120,7 @@ public class MovimientoService
 
     public Task<Movimiento> RegistrarTransferenciaAsync(
         int productoId, int almacenOrigenId, int almacenDestinoId,
-        decimal cantidad, int usuarioId, string? nota = null, DateTime? fecha = null)
+        decimal cantidad, int usuarioId, string? nota = null, DateTime? fecha = null, string? numeroLote = null, DateTime? fechaVencimiento = null)
         => EjecutarConReintentosAsync(async () =>
         {
             ValidarCantidad(cantidad);
@@ -80,11 +135,16 @@ public class MovimientoService
             var destino = await ObtenerOCrearExistenciaAsync(productoId, almacenDestinoId);
             origen.Cantidad -= cantidad;
             destino.Cantidad += cantidad;
+
+            DateTime? fechaVencUtc = fechaVencimiento.HasValue ? ObtenerFechaMovimientoUtc(fechaVencimiento) : null;
+            var loteStr = string.IsNullOrWhiteSpace(numeroLote) ? null : numeroLote.Trim();
+
             var mov = new Movimiento
             {
                 Tipo = TipoMovimiento.Transferencia, ProductoId = productoId,
                 AlmacenOrigenId = almacenOrigenId, AlmacenDestinoId = almacenDestinoId,
-                Cantidad = cantidad, UsuarioId = usuarioId, Nota = nota, Fecha = ObtenerFechaMovimientoUtc(fecha)
+                Cantidad = cantidad, UsuarioId = usuarioId, Nota = nota, Fecha = ObtenerFechaMovimientoUtc(fecha),
+                NumeroLote = loteStr, FechaVencimiento = fechaVencUtc
             };
             _db.Movimientos.Add(mov);
             await _db.SaveChangesAsync();

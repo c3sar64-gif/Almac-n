@@ -10,7 +10,8 @@ namespace SistemaAlmacen.Api.Controllers;
 
 public record MovimientoRequest(
     int ProductoId, decimal Cantidad, string? Nota,
-    int? AlmacenOrigenId, int? AlmacenDestinoId, DateTime? Fecha);
+    int? AlmacenOrigenId, int? AlmacenDestinoId, DateTime? Fecha,
+    string? NumeroLote, DateTime? FechaVencimiento);
 
 [ApiController]
 [Route("api/movimientos")]
@@ -32,7 +33,8 @@ public class MovimientosController : ControllerBase
     {
         if (r.AlmacenDestinoId is null)
             throw new ReglaNegocioException("Falta el almacén de destino.");
-        return await _svc.RegistrarEntradaAsync(r.ProductoId, r.AlmacenDestinoId.Value, r.Cantidad, UsuarioId, r.Nota, r.Fecha);
+        return await _svc.RegistrarEntradaAsync(
+            r.ProductoId, r.AlmacenDestinoId.Value, r.Cantidad, UsuarioId, r.Nota, r.Fecha, r.NumeroLote, r.FechaVencimiento);
     }
 
     [HttpPost("salida")]
@@ -40,7 +42,8 @@ public class MovimientosController : ControllerBase
     {
         if (r.AlmacenOrigenId is null)
             throw new ReglaNegocioException("Falta el almacén de origen.");
-        return await _svc.RegistrarSalidaAsync(r.ProductoId, r.AlmacenOrigenId.Value, r.Cantidad, UsuarioId, r.Nota, r.Fecha);
+        return await _svc.RegistrarSalidaAsync(
+            r.ProductoId, r.AlmacenOrigenId.Value, r.Cantidad, UsuarioId, r.Nota, r.Fecha, r.NumeroLote, r.FechaVencimiento);
     }
 
     [HttpPost("transferencia")]
@@ -51,7 +54,7 @@ public class MovimientosController : ControllerBase
         if (r.AlmacenDestinoId is null)
             throw new ReglaNegocioException("Falta el almacén de destino.");
         return await _svc.RegistrarTransferenciaAsync(
-            r.ProductoId, r.AlmacenOrigenId.Value, r.AlmacenDestinoId.Value, r.Cantidad, UsuarioId, r.Nota, r.Fecha);
+            r.ProductoId, r.AlmacenOrigenId.Value, r.AlmacenDestinoId.Value, r.Cantidad, UsuarioId, r.Nota, r.Fecha, r.NumeroLote, r.FechaVencimiento);
     }
 
     // Historial con filtros: sirve también como reporte de movimientos por rango de fechas.
@@ -69,6 +72,7 @@ public class MovimientosController : ControllerBase
             .Select(m => new
             {
                 m.Id, Tipo = m.Tipo.ToString(), m.Fecha, m.Cantidad, m.Nota,
+                m.NumeroLote, m.FechaVencimiento,
                 Producto = new { m.Producto!.Id, m.Producto.Sku, m.Producto.Nombre },
                 AlmacenOrigen = m.AlmacenOrigen == null ? null : m.AlmacenOrigen.Nombre,
                 AlmacenDestino = m.AlmacenDestino == null ? null : m.AlmacenDestino.Nombre,
