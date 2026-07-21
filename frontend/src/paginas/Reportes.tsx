@@ -16,7 +16,7 @@ interface FilaInventario {
 }
 
 export default function Reportes() {
-  const [tab, setTab] = useState<'historial' | 'auditoria'>('historial')
+  const [tab, setTab] = useState<'historial' | 'auditoria' | 'kardex'>('kardex')
   const [movimientos, setMovimientos] = useState<Movimiento[]>([])
   const [productos, setProductos] = useState<Producto[]>([])
   const [almacenes, setAlmacenes] = useState<Almacen[]>([])
@@ -27,6 +27,13 @@ export default function Reportes() {
   const [productoId, setProductoId] = useState('')
   const [almacenId, setAlmacenId] = useState('')
   
+  // Filtros Kardex Físico
+  const [kardexProductoId, setKardexProductoId] = useState('')
+  const [kardexAlmacenId, setKardexAlmacenId] = useState('')
+  const [kardexDesde, setKardexDesde] = useState('')
+  const [kardexHasta, setKardexHasta] = useState('')
+  const [movimientosKardex, setMovimientosKardex] = useState<Movimiento[]>([])
+
   // Auditoría / Toma
   const [auditoriaAlmacenId, setAuditoriaAlmacenId] = useState('')
   const [planilla, setPlanilla] = useState<FilaInventario[]>([])
@@ -35,11 +42,35 @@ export default function Reportes() {
   const [exito, setExito] = useState('')
   const [cargando, setCargando] = useState(false)
 
-  // Cargar catálogos
+  // Cargar catálogos y seleccionar primer producto por defecto para Kardex
   useEffect(() => {
-    api<Producto[]>('/api/productos').then(setProductos).catch(e => setError(e.message))
+    api<Producto[]>('/api/productos').then(p => {
+      setProductos(p)
+      if (p.length > 0 && !kardexProductoId) {
+        setKardexProductoId(String(p[0].id))
+      }
+    }).catch(e => setError(e.message))
     api<Almacen[]>('/api/almacenes').then(setAlmacenes).catch(e => setError(e.message))
   }, [])
+
+  // Cargar movimientos para Kardex Físico (Ordenados cronológicamente Ascendente)
+  useEffect(() => {
+    if (tab === 'kardex' && kardexProductoId) {
+      const params = new URLSearchParams()
+      params.set('productoId', kardexProductoId)
+      if (kardexAlmacenId) params.set('almacenId', kardexAlmacenId)
+      if (kardexDesde) params.set('desde', kardexDesde)
+      if (kardexHasta) params.set('hasta', `${kardexHasta}T23:59:59`)
+
+      api<Movimiento[]>(`/api/movimientos?${params}`)
+        .then(data => {
+          // Ordenar de más antiguo a más reciente para calcular el saldo acumulado
+          const listaAsc = [...data].sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
+          setMovimientosKardex(listaAsc)
+        })
+        .catch(e => setError(e.message))
+    }
+  }, [kardexProductoId, kardexAlmacenId, kardexDesde, kardexHasta, tab])
 
   // Cargar historial de movimientos
   const cargarHistorial = () => {
@@ -76,11 +107,9 @@ export default function Reportes() {
         api<Existencia[]>(`/api/existencias?${params}`),
         api<Producto[]>('/api/productos')
       ]).then(([existencias, todosProductos]) => {
-        // Mapear existencias indexadas por producto id
         const existMap = new Map<number, number>()
         existencias.forEach(e => existMap.set(e.producto.id, e.cantidad))
         
-        // Crear planilla con todos los productos (incluso los que no tienen stock aún)
         const selectedAlmacen = almacenes.find(a => String(a.id) === auditoriaAlmacenId)
         const filas: FilaInventario[] = todosProductos.map(p => ({
           productoId: p.id,
@@ -89,7 +118,7 @@ export default function Reportes() {
           imagenUrl: p.imagenUrl,
           unidadMedida: p.unidadMedida,
           stockSistema: existMap.get(p.id) ?? 0,
-          stockFisico: '', // Vacío por defecto para que lo llene el operador
+          stockFisico: '',
           almacenNombre: selectedAlmacen?.nombre ?? '',
           almacenUbicacion: selectedAlmacen?.ubicacion ?? 'Sin ubicación'
         }))
@@ -104,13 +133,11 @@ export default function Reportes() {
     setError('')
     setExito('')
     
-    // Validar almacén seleccionado
     if (!auditoriaAlmacenId) {
       setError('Debes seleccionar un almacén para aplicar los ajustes.')
       return
     }
 
-    // Filtrar filas que tengan un conteo válido
     const filasAjustar = planilla.filter(f => f.stockFisico !== '')
     if (filasAjustar.length === 0) {
       setError('Por favor, ingresa el stock físico de al menos un producto.')
@@ -125,9 +152,8 @@ export default function Reportes() {
         if (isNaN(fisico) || fisico < 0) continue
 
         const diferencia = fisico - fila.stockSistema
-        if (diferencia === 0) continue // Sin diferencia, sin ajuste
+        if (diferencia === 0) continue
 
-        // Preparar payload de movimiento
         const payload = {
           productoId: fila.productoId,
           cantidad: Math.abs(diferencia),
@@ -136,7 +162,6 @@ export default function Reportes() {
           almacenDestinoId: diferencia > 0 ? Number(auditoriaAlmacenId) : null
         }
 
-        // Llamar a entrada o salida según diferencia
         const endpoint = diferencia > 0 ? '/api/movimientos/entrada' : '/api/movimientos/salida'
         await api(endpoint, {
           method: 'POST',
@@ -146,8 +171,6 @@ export default function Reportes() {
       }
 
       setExito(`Ajustes aplicados con éxito. Se realizaron ${totalModificados} movimientos de ajuste.`)
-      
-      // Forzar recarga de planilla con el nuevo stock sistema
       setAuditoriaAlmacenId('')
       setTimeout(() => setAuditoriaAlmacenId(auditoriaAlmacenId), 100)
     } catch (err: any) {
@@ -157,16 +180,91 @@ export default function Reportes() {
     }
   }
 
-  // Activa la impresión nativa de la planilla de conteo
   function imprimirPlanilla() {
     window.print()
   }
 
+  // Exportar Kardex a Excel (.csv con UTF-8 BOM)
+  const kardexProductoSel = productos.find(p => String(p.id) === kardexProductoId)
+  
+  // Calcular saldo acumulado
+  let saldoAcumulado = 0
+  const filasKardex = movimientosKardex.map(m => {
+    const esEntrada = m.tipo === 'Entrada'
+    const esSalida = m.tipo === 'Salida'
+    let ingreso: number | null = null
+    let salida: number | null = null
+    let devolucion: number | null = null
+    
+    if (esEntrada) {
+      ingreso = m.cantidad
+      saldoAcumulado += m.cantidad
+    } else if (esSalida) {
+      salida = m.cantidad
+      saldoAcumulado -= m.cantidad
+    } else {
+      ingreso = m.cantidad
+      saldoAcumulado += m.cantidad
+    }
+
+    return {
+      id: m.id,
+      fecha: m.fecha,
+      destinoOrigen: esEntrada ? (m.almacenDestino || 'Almacén Central') : (m.almacenOrigen || 'Planta'),
+      ingreso,
+      salida,
+      devolucion,
+      saldo: saldoAcumulado,
+      responsable: m.usuario,
+      observaciones: m.nota || '',
+      lote: m.numeroLote
+    }
+  })
+
+  function exportarExcelKardex() {
+    if (!kardexProductoSel) return
+    
+    const headers = ['FECHA', 'DESTINO / ORIGEN', 'INGRESO', 'SALIDA', 'DEVOLUCION', 'SALDO', 'RESPONSABLE', 'OBSERVACIONES']
+    const rows = filasKardex.map(f => [
+      `"${new Date(f.fecha).toLocaleDateString()} ${new Date(f.fecha).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}"`,
+      `"${(f.destinoOrigen || '').replace(/"/g, '""')}"`,
+      f.ingreso ?? '',
+      f.salida ?? '',
+      f.devolucion ?? '',
+      f.saldo,
+      `"${(f.responsable || '').replace(/"/g, '""')}"`,
+      `"${(f.observaciones || '').replace(/"/g, '""')}"`
+    ])
+    
+    const csvContent = '\uFEFF' + [
+      `"KARDEX MATERIA PRIMA , INSUMOS Y EMPAQUE - OVOPLUS"`,
+      `"ITEM: ${kardexProductoSel.nombre}"`,
+      `"UNIDAD DE MEDIDA: ${kardexProductoSel.unidadMedida}"`,
+      `"ALMACEN: ${almacenes.find(a => String(a.id) === kardexAlmacenId)?.nombre || 'Todos los almacenes'}"`,
+      '',
+      headers.join(','),
+      ...rows.map(r => r.join(','))
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', `Kardex_${kardexProductoSel.sku}_${new Date().toISOString().split('T')[0]}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   return (
     <>
-      {/* Print-only CSS style to hide navbar and show clean table */}
+      {/* CSS para Impresión de Kardex Físico Estilo Cuaderno */}
       <style>{`
         @media print {
+          @page {
+            size: landscape;
+            margin: 10mm;
+          }
           nav, aside, header, footer, button, .no-print {
             display: none !important;
           }
@@ -176,55 +274,139 @@ export default function Reportes() {
             margin: 0 !important;
             color: black !important;
           }
-          .print-title {
+          .kardex-print-book {
             display: block !important;
-            margin-bottom: 2rem;
-            text-align: center;
+            width: 100% !important;
+            border: 2px solid #000 !important;
+            padding: 15px !important;
+            font-family: system-ui, sans-serif !important;
           }
-          table {
+          .kardex-print-book table {
             width: 100% !important;
             border-collapse: collapse !important;
+            margin-top: 15px !important;
           }
-          th, td {
+          .kardex-print-book th, .kardex-print-book td {
             border: 1px solid #000 !important;
-            padding: 8px !important;
+            padding: 6px 8px !important;
+            font-size: 11px !important;
+          }
+          .kardex-print-book th {
+            background-color: #f0f4f8 !important;
+            font-weight: bold !important;
+            text-transform: uppercase !important;
           }
         }
-        .print-title {
+        .kardex-print-book {
           display: none;
         }
       `}</style>
 
-      {/* Printable Title Block */}
-      <div className="print-title">
-        <h1 className="text-xl font-bold uppercase tracking-wider">Planilla de Toma de Inventario Físico</h1>
-        <p className="text-xs text-slate-500 mt-1">
-          Almacén: {almacenes.find(a => String(a.id) === auditoriaAlmacenId)?.nombre || 'Todos'} • Dirección/Ubicación: {almacenes.find(a => String(a.id) === auditoriaAlmacenId)?.ubicacion || 'Sin dirección'} • Fecha de Conteo: ________________
-        </p>
-      </div>
+      {/* Bloque de Impresión Nativa (Solo visible al Imprimir) */}
+      {kardexProductoSel && (
+        <div className="kardex-print-book">
+          <div className="flex items-center justify-between border-b-2 border-black pb-3 mb-3">
+            <div className="flex items-center gap-3">
+              <div className="text-2xl font-black tracking-tighter text-blue-900 border-2 border-black px-2 py-0.5 rounded">
+                OVO<span className="text-blue-600">Φ</span>LUS
+              </div>
+              <div>
+                <h1 className="text-lg font-black uppercase tracking-wider leading-tight">
+                  KARDEX MATERIA PRIMA , INSUMOS Y EMPAQUE {new Date().getFullYear()}
+                </h1>
+                <p className="text-[10px] uppercase font-bold text-slate-600">ROLON - INDUSTRIA ALIMENTICIA</p>
+              </div>
+            </div>
+            <div className="text-right text-xs">
+              <div><strong>FECHA IMPRESIÓN:</strong> {new Date().toLocaleDateString()}</div>
+              <div><strong>ALMACÉN:</strong> {almacenes.find(a => String(a.id) === kardexAlmacenId)?.nombre || 'TODOS'}</div>
+            </div>
+          </div>
+
+          <div className="bg-slate-100 p-2.5 border border-black text-xs font-bold mb-3 flex justify-between items-center">
+            <div><strong>ITEM:</strong> {kardexProductoSel.nombre.toUpperCase()} ({kardexProductoSel.sku})</div>
+            <div><strong>UNIDAD DE MEDIDA:</strong> {kardexProductoSel.unidadMedida}</div>
+            <div><strong>SALDO ACTUAL:</strong> {saldoAcumulado} {kardexProductoSel.unidadMedida}</div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style={{ width: '90px' }}>FECHA</th>
+                <th>DESTINO / ORIGEN</th>
+                <th style={{ width: '70px', textAlign: 'right' }}>INGRESO</th>
+                <th style={{ width: '70px', textAlign: 'right' }}>SALIDA</th>
+                <th style={{ width: '70px', textAlign: 'right' }}>DEVOLUCIÓN</th>
+                <th style={{ width: '80px', textAlign: 'right' }}>SALDO</th>
+                <th style={{ width: '100px' }}>NOMBRE</th>
+                <th style={{ width: '90px' }}>FIRMA</th>
+                <th>OBSERVACIONES</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filasKardex.map((f, i) => (
+                <tr key={i}>
+                  <td>{new Date(f.fecha).toLocaleDateString()}</td>
+                  <td>{f.destinoOrigen}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{f.ingreso ?? ''}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 'bold' }}>{f.salida ?? ''}</td>
+                  <td style={{ textAlign: 'right' }}>{f.devolucion ?? ''}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 'extrabold', backgroundColor: '#f8fafc' }}>{f.saldo}</td>
+                  <td>{f.responsable}</td>
+                  <td style={{ height: '30px' }}></td>
+                  <td>{f.observaciones} {f.lote ? `(Lote: ${f.lote})` : ''}</td>
+                </tr>
+              ))}
+              {/* Filas vacías adicionales para completar el libro impreso si es corto */}
+              {Array.from({ length: Math.max(0, 15 - filasKardex.length) }).map((_, idx) => (
+                <tr key={`empty-${idx}`}>
+                  <td style={{ height: '28px' }}></td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <div className="no-print">
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="font-headline-lg text-headline-lg text-[#001f51] font-bold">Reportes y Auditoría</h1>
+          <h1 className="font-headline-lg text-headline-lg text-[#001f51] font-bold">Reportes y Kardex Físico</h1>
           <p className="font-body-md text-body-md text-slate-500 mt-2 max-w-2xl">
-            Consulta el historial transaccional de movimientos o genera planillas de conteo físico para auditar existencias.
+            Genera e imprime el Kardex oficial de materias primas e insumos con el formato exacto del cuaderno de planta.
           </p>
         </div>
 
         {/* Tab Selection */}
-        <div className="flex gap-4 border-b border-slate-200 mb-8 bg-white p-2 rounded-lg shadow-sm w-fit">
+        <div className="flex gap-2 border-b border-slate-200 mb-8 bg-white p-2 rounded-xl shadow-sm w-fit flex-wrap">
+          <button
+            onClick={() => { setTab('kardex'); setError(''); setExito(''); }}
+            className={`px-4 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${tab === 'kardex' ? 'bg-[#001f51] text-white shadow-sm' : 'bg-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
+          >
+            <span className="material-symbols-outlined text-base">menu_book</span>
+            <span>Kardex Físico (Cuaderno)</span>
+          </button>
           <button
             onClick={() => { setTab('historial'); setError(''); setExito(''); }}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${tab === 'historial' ? 'bg-[#001f51] text-white shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-800'}`}
+            className={`px-4 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${tab === 'historial' ? 'bg-[#001f51] text-white shadow-sm' : 'bg-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
           >
-            Historial de Movimientos
+            <span className="material-symbols-outlined text-base">history</span>
+            <span>Historial de Movimientos</span>
           </button>
           <button
             onClick={() => { setTab('auditoria'); setError(''); setExito(''); }}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${tab === 'auditoria' ? 'bg-[#001f51] text-white shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-800'}`}
+            className={`px-4 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${tab === 'auditoria' ? 'bg-[#001f51] text-white shadow-sm' : 'bg-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
           >
-            Toma de Inventario Físico
+            <span className="material-symbols-outlined text-base">checklist</span>
+            <span>Toma de Inventario Físico</span>
           </button>
         </div>
       </div>
@@ -241,6 +423,196 @@ export default function Reportes() {
         <div className="text-green-700 text-xs flex items-center gap-1.5 alert bg-green-50 p-3 rounded-lg border border-green-200 mb-6 no-print">
           <span className="material-symbols-outlined text-sm shrink-0">check_circle</span>
           <span>{exito}</span>
+        </div>
+      )}
+
+      {/* TAB 0: KARDEX FÍSICO CUADERNO (OVOPLUS) */}
+      {tab === 'kardex' && (
+        <div className="space-y-6 print-container">
+          {/* Controls & Filter Card */}
+          <div className="p-6 bg-white border border-slate-200 rounded-xl shadow-sm no-print">
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-6">
+              <div>
+                <h3 className="text-xs font-bold text-[#3755c3] uppercase tracking-widest mb-1">Configuración de Libro Kardex</h3>
+                <p className="text-xs text-slate-500">Selecciona el insumo y filtros para ver la planilla idéntica al cuaderno de planta.</p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={exportarExcelKardex}
+                  disabled={!kardexProductoSel || filasKardex.length === 0}
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-base">table_view</span>
+                  <span>Exportar a Excel</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={imprimirPlanilla}
+                  disabled={!kardexProductoSel}
+                  className="px-4 py-2.5 bg-[#001f51] hover:bg-[#00337c] text-white rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-base">print</span>
+                  <span>Imprimir Kardex (PDF)</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 border-t border-slate-100 pt-4">
+              {/* Product Select */}
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-tighter">
+                  Seleccionar Ítem / Producto *
+                </label>
+                <select
+                  value={kardexProductoId}
+                  onChange={e => setKardexProductoId(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-[#001f51] outline-none focus:border-[#3755c3] transition-all cursor-pointer"
+                >
+                  <option value="">-- Seleccionar Insumo --</option>
+                  {productos.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.sku} — {p.nombre} ({p.unidadMedida})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Warehouse Select */}
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-tighter">Almacén</label>
+                <select
+                  value={kardexAlmacenId}
+                  onChange={e => setKardexAlmacenId(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-[#3755c3] transition-all cursor-pointer"
+                >
+                  <option value="">Todos los almacenes</option>
+                  {almacenes.map(a => (
+                    <option key={a.id} value={a.id}>{a.nombre}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Date Filters */}
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-tighter">Período (Desde / Hasta)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="date"
+                    value={kardexDesde}
+                    onChange={e => setKardexDesde(e.target.value)}
+                    className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-lg text-[11px] outline-none focus:border-[#3755c3]"
+                  />
+                  <input
+                    type="date"
+                    value={kardexHasta}
+                    onChange={e => setKardexHasta(e.target.value)}
+                    className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-lg text-[11px] outline-none focus:border-[#3755c3]"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Book Preview Table */}
+          {kardexProductoSel ? (
+            <div className="bg-white border-2 border-slate-800 rounded-xl shadow-md overflow-hidden">
+              {/* Header Badge */}
+              <div className="p-6 border-b-2 border-slate-800 bg-slate-900 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-[#3755c3] text-white flex items-center justify-center font-black text-sm border border-white/20">
+                    OP
+                  </div>
+                  <div>
+                    <h2 className="text-base font-black uppercase tracking-wider text-white">
+                      KARDEX MATERIA PRIMA , INSUMOS Y EMPAQUE 2026
+                    </h2>
+                    <p className="text-[11px] text-blue-200 font-semibold uppercase tracking-widest">OVOPLUS - ROLON INDUSTRIA ALIMENTICIA</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 text-xs bg-white/10 px-4 py-2 rounded-lg border border-white/10">
+                  <div>
+                    <span className="text-slate-300 block text-[10px] uppercase">Ítem Seleccionado</span>
+                    <strong className="text-white font-bold">{kardexProductoSel.nombre}</strong>
+                  </div>
+                  <div className="h-6 w-px bg-white/20"></div>
+                  <div>
+                    <span className="text-slate-300 block text-[10px] uppercase">Saldo Actual</span>
+                    <strong className="text-emerald-300 font-black text-sm">{saldoAcumulado} {kardexProductoSel.unidadMedida}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-slate-100 border-b border-slate-300 text-slate-700">
+                    <tr>
+                      <th className="p-3 text-[11px] font-extrabold uppercase border-r border-slate-200">FECHA</th>
+                      <th className="p-3 text-[11px] font-extrabold uppercase border-r border-slate-200">DESTINO / ORIGEN</th>
+                      <th className="p-3 text-[11px] font-extrabold uppercase border-r border-slate-200 text-right text-emerald-700">INGRESO</th>
+                      <th className="p-3 text-[11px] font-extrabold uppercase border-r border-slate-200 text-right text-amber-700">SALIDA</th>
+                      <th className="p-3 text-[11px] font-extrabold uppercase border-r border-slate-200 text-right text-blue-700">DEVOLUCIÓN</th>
+                      <th className="p-3 text-[11px] font-black uppercase border-r border-slate-300 text-right bg-blue-50 text-[#001f51]">SALDO</th>
+                      <th className="p-3 text-[11px] font-extrabold uppercase border-r border-slate-200">NOMBRE</th>
+                      <th className="p-3 text-[11px] font-extrabold uppercase border-r border-slate-200 text-center">FIRMA</th>
+                      <th className="p-3 text-[11px] font-extrabold uppercase">OBSERVACIONES</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 text-xs">
+                    {filasKardex.length > 0 ? (
+                      filasKardex.map((f, i) => (
+                        <tr key={i} className="hover:bg-slate-50 transition-colors">
+                          <td className="p-3 border-r border-slate-200 font-medium text-slate-600 whitespace-nowrap">
+                            {new Date(f.fecha).toLocaleDateString()}
+                          </td>
+                          <td className="p-3 border-r border-slate-200 font-semibold text-slate-800">
+                            {f.destinoOrigen}
+                          </td>
+                          <td className="p-3 border-r border-slate-200 text-right font-extrabold text-emerald-700">
+                            {f.ingreso ?? '—'}
+                          </td>
+                          <td className="p-3 border-r border-slate-200 text-right font-extrabold text-amber-700">
+                            {f.salida ?? '—'}
+                          </td>
+                          <td className="p-3 border-r border-slate-200 text-right font-bold text-blue-700">
+                            {f.devolucion ?? '—'}
+                          </td>
+                          <td className="p-3 border-r border-slate-300 text-right font-black text-sm bg-blue-50/70 text-[#001f51]">
+                            {f.saldo}
+                          </td>
+                          <td className="p-3 border-r border-slate-200 font-medium text-slate-700">
+                            {f.responsable}
+                          </td>
+                          <td className="p-3 border-r border-slate-200 text-center">
+                            <span className="inline-block w-16 border-b border-slate-300 h-4"></span>
+                          </td>
+                          <td className="p-3 text-slate-500 italic">
+                            {f.observaciones || '—'} {f.lote ? <span className="not-italic font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded text-[10px] ml-1">Lote: {f.lote}</span> : ''}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={9} className="p-8 text-center text-slate-400 text-xs font-semibold">
+                          No se registran movimientos para este producto en el rango seleccionado.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="p-12 text-center bg-white border border-slate-200 rounded-xl shadow-sm no-print">
+              <span className="material-symbols-outlined text-slate-300 text-5xl mb-3">menu_book</span>
+              <p className="text-sm font-semibold text-slate-500">Selecciona un producto arriba para visualizar y generar su libro Kardex.</p>
+            </div>
+          )}
         </div>
       )}
 

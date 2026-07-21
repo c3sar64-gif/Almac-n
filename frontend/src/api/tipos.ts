@@ -31,10 +31,40 @@ export interface Movimiento {
   fecha: string
   cantidad: number
   nota?: string | null
+  numeroLote?: string | null
+  fechaVencimiento?: string | null
   producto: { id: number; sku: string; nombre: string }
   almacenOrigen?: string | null
   almacenDestino?: string | null
   usuario: string
+}
+
+export interface AlertaStock {
+  productoId: number
+  productoNombre: string
+  sku: string
+  unidadMedida: string
+  almacenNombre: string
+  stockActual: number
+  stockMinimo: number
+}
+
+export interface AlertaVencimiento {
+  loteId: number
+  codigoLote: string
+  productoNombre: string
+  almacenNombre: string
+  cantidad: number
+  fechaVencimiento: string
+  diasParaVencer: number
+  esVencido: boolean
+}
+
+export interface ResumenNotificaciones {
+  totalAlertas: number
+  alertasStock: AlertaStock[]
+  alertasVencimiento: AlertaVencimiento[]
+  tareasPendientes: number
 }
 
 export interface Sesion {

@@ -24,6 +24,8 @@ export default function Movimientos() {
   }
 
   const [fecha, setFecha] = useState(getTodayLocalStr())
+  const [numeroLote, setNumeroLote] = useState('')
+  const [fechaVencimiento, setFechaVencimiento] = useState('')
   const [nota, setNota] = useState('')
   const [error, setError] = useState('')
   const [exito, setExito] = useState('')
@@ -105,6 +107,8 @@ export default function Movimientos() {
           almacenOrigenId: usaOrigen ? Number(origenId) : null,
           almacenDestinoId: usaDestino ? Number(destinoId) : null,
           fecha: fecha ? `${fecha}T12:00:00Z` : null,
+          numeroLote: numeroLote ? numeroLote.trim() : null,
+          fechaVencimiento: fechaVencimiento ? `${fechaVencimiento}T12:00:00Z` : null,
         }),
       })
       setExito(`Movimiento de ${tipo.toUpperCase()} registrado con éxito.`)
@@ -113,6 +117,8 @@ export default function Movimientos() {
       setProductoId('')
       setOrigenId('')
       setDestinoId('')
+      setNumeroLote('')
+      setFechaVencimiento('')
       setStockOrigen(null)
       setStockDestino(null)
     } catch (err: any) {
@@ -273,7 +279,7 @@ export default function Movimientos() {
             )}
 
             {/* Quantity */}
-            <div className="flex flex-col gap-base md:col-span-2">
+            <div className="flex flex-col gap-base">
               <label htmlFor="cantidad" className="text-label-sm font-label-sm text-on-surface-variant">
                 Cantidad a Mover ({unidadSel})
               </label>
@@ -287,6 +293,37 @@ export default function Movimientos() {
                 required
                 placeholder="0.00"
                 className="w-full py-2.5 px-3 bg-white/50 border border-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-primary text-body-lg font-extrabold text-[#001f51]"
+              />
+            </div>
+
+            {/* Número de Lote (Opcional/FEFO) */}
+            <div className="flex flex-col gap-base">
+              <label htmlFor="numeroLote" className="text-label-sm font-label-sm text-on-surface-variant flex items-center justify-between">
+                <span>Nº de Lote / Código</span>
+                <span className="text-[10px] text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">Opcional / FEFO</span>
+              </label>
+              <input
+                id="numeroLote"
+                type="text"
+                value={numeroLote}
+                onChange={e => setNumeroLote(e.target.value)}
+                placeholder="Ej. LOT-2026-A105"
+                className="w-full py-2.5 px-3 bg-white/50 border border-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-primary text-body-md font-medium"
+              />
+            </div>
+
+            {/* Fecha de Vencimiento (Opcional/FEFO) */}
+            <div className="flex flex-col gap-base md:col-span-2">
+              <label htmlFor="fechaVencimiento" className="text-label-sm font-label-sm text-on-surface-variant flex items-center justify-between">
+                <span>Fecha de Vencimiento (Insumos / Alimentos)</span>
+                <span className="text-[10px] text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">Alerta de Vencimiento</span>
+              </label>
+              <input
+                id="fechaVencimiento"
+                type="date"
+                value={fechaVencimiento}
+                onChange={e => setFechaVencimiento(e.target.value)}
+                className="w-full py-2.5 px-3 bg-white/50 border border-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-primary text-body-md font-semibold text-amber-900"
               />
             </div>
 
