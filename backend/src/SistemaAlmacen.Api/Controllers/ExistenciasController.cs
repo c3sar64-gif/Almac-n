@@ -31,6 +31,30 @@ public class ExistenciasController : ControllerBase
             }).ToListAsync();
     }
 
+    [HttpGet("lotes")]
+    public async Task<IActionResult> ListarLotes(int? productoId, int? almacenId)
+    {
+        var q = _db.Lotes.AsQueryable();
+        if (productoId.HasValue) q = q.Where(l => l.ProductoId == productoId.Value);
+        if (almacenId.HasValue) q = q.Where(l => l.AlmacenId == almacenId.Value);
+
+        var res = await q
+            .Where(l => l.Cantidad > 0)
+            .OrderBy(l => l.FechaVencimiento)
+            .Select(l => new
+            {
+                l.Id,
+                l.CodigoLote,
+                l.Cantidad,
+                FechaVencimiento = l.FechaVencimiento.HasValue ? l.FechaVencimiento.Value.ToString("dd/MM/yyyy") : "Sin Vencimiento",
+                DiasParaVencer = l.FechaVencimiento.HasValue ? (int?)(l.FechaVencimiento.Value.Date - DateTime.UtcNow.Date).TotalDays : null,
+                AlmacenNombre = l.Almacen != null ? l.Almacen.Nombre : "Almacén",
+                ProductoNombre = l.Producto != null ? l.Producto.Nombre : "Insumo"
+            }).ToListAsync();
+
+        return Ok(res);
+    }
+
     [HttpPut("{id:int}/stock-minimo")]
     public async Task<IActionResult> ActualizarStockMinimo(int id, [FromBody] decimal stockMinimo)
     {

@@ -4,7 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import { api } from '../api/cliente'
 import type { ResumenNotificaciones } from '../api/tipos'
 
-const TODOS_MODULOS_DEFAULT = ['productos', 'almacenes', 'movimientos', 'logistica', 'reportes', 'usuarios']
+const TODOS_MODULOS_DEFAULT = ['dashboard', 'productos', 'almacenes', 'movimientos', 'logistica', 'reportes', 'usuarios']
 
 interface EnlaceNav {
   a: string
@@ -15,12 +15,14 @@ interface EnlaceNav {
 
 const enlaces: EnlaceNav[] = [
   { a: '/', texto: 'Existencias', icono: 'grid_view', moduloId: 'productos' },
+  { a: '/recepcion-materia-prima', texto: 'Recepción MP', icono: 'move_to_inbox', moduloId: 'movimientos' },
   { a: '/productos', texto: 'Productos', icono: 'inventory_2', moduloId: 'productos' },
   { a: '/almacenes', texto: 'Almacenes', icono: 'warehouse', moduloId: 'almacenes' },
   { a: '/movimientos', texto: 'Movimientos', icono: 'swap_horiz', moduloId: 'movimientos' },
   { a: '/logistica-choferes', texto: 'Logística Choferes', icono: 'local_shipping', moduloId: 'logistica' },
   { a: '/reportes', texto: 'Reportes', icono: 'analytics', moduloId: 'reportes' },
   { a: '/usuarios', texto: 'Usuarios', icono: 'group', moduloId: 'usuarios' },
+  { a: '/dashboard', texto: 'Dashboard', icono: 'dashboard', moduloId: 'dashboard' },
 ]
 
 export default function Layout() {
@@ -63,6 +65,7 @@ export default function Layout() {
 
   // Filtrar enlaces de acuerdo a los módulos permitidos
   const enlacesVisibles = enlaces.filter(e => {
+    if (e.moduloId === 'dashboard') return true
     if (e.moduloId === 'usuarios') {
       return sesion?.rol === 'Admin' || modulosUsuario.includes('usuarios')
     }

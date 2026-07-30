@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<TareaLogistica> TareasLogistica => Set<TareaLogistica>();
     public DbSet<Lote> Lotes => Set<Lote>();
+    public DbSet<RecepcionMateriaPrima> RecepcionesMateriaPrima => Set<RecepcionMateriaPrima>();
 
     protected override void OnModelCreating(ModelBuilder mb)
     {

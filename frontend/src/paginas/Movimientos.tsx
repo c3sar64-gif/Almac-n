@@ -30,6 +30,7 @@ export default function Movimientos() {
   const [error, setError] = useState('')
   const [exito, setExito] = useState('')
   const [cargando, setCargando] = useState(false)
+  const [mostrarOpcionesLote, setMostrarOpcionesLote] = useState(false)
 
   const [stockOrigen, setStockOrigen] = useState<number | null>(null)
   const [stockDestino, setStockDestino] = useState<number | null>(null)
@@ -296,36 +297,61 @@ export default function Movimientos() {
               />
             </div>
 
-            {/* Número de Lote (Opcional/FEFO) */}
-            <div className="flex flex-col gap-base">
-              <label htmlFor="numeroLote" className="text-label-sm font-label-sm text-on-surface-variant flex items-center justify-between">
-                <span>Nº de Lote / Código</span>
-                <span className="text-[10px] text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">Opcional / FEFO</span>
-              </label>
-              <input
-                id="numeroLote"
-                type="text"
-                value={numeroLote}
-                onChange={e => setNumeroLote(e.target.value)}
-                placeholder="Ej. LOT-2026-A105"
-                className="w-full py-2.5 px-3 bg-white/50 border border-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-primary text-body-md font-medium"
-              />
+            {/* Botón Tono / Colapsable para Opciones Avanzadas de Lote */}
+            <div className="md:col-span-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setMostrarOpcionesLote(!mostrarOpcionesLote)}
+                className="text-xs font-bold text-[#3755c3] hover:text-[#001f51] flex items-center gap-1.5 py-1.5 px-3 bg-blue-50/70 hover:bg-blue-100/70 rounded-lg transition-colors cursor-pointer border border-blue-100"
+              >
+                <span className="material-symbols-outlined text-sm">
+                  {mostrarOpcionesLote ? 'unfold_less' : 'tune'}
+                </span>
+                <span>
+                  {mostrarOpcionesLote ? 'Ocultar Opciones de Lote y Vencimiento' : '➕ Especificar Nº de Lote o Vencimiento Manual (Opcional)'}
+                </span>
+              </button>
+
+              {!mostrarOpcionesLote && (
+                <p className="text-[11px] text-slate-400 mt-1 pl-1">
+                  💡 <em>Nota: El sistema asigna automáticamente el lote mediante FEFO en salidas. Para registrar materias primas recibidas con certificado de calidad, utiliza el módulo <strong>Recepción MP</strong>.</em>
+                </p>
+              )}
             </div>
 
-            {/* Fecha de Vencimiento (Opcional/FEFO) */}
-            <div className="flex flex-col gap-base md:col-span-2">
-              <label htmlFor="fechaVencimiento" className="text-label-sm font-label-sm text-on-surface-variant flex items-center justify-between">
-                <span>Fecha de Vencimiento (Insumos / Alimentos)</span>
-                <span className="text-[10px] text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">Alerta de Vencimiento</span>
-              </label>
-              <input
-                id="fechaVencimiento"
-                type="date"
-                value={fechaVencimiento}
-                onChange={e => setFechaVencimiento(e.target.value)}
-                className="w-full py-2.5 px-3 bg-white/50 border border-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-primary text-body-md font-semibold text-amber-900"
-              />
-            </div>
+            {/* Campos Opcionales de Lote y Vencimiento */}
+            {mostrarOpcionesLote && (
+              <>
+                <div className="flex flex-col gap-base animate-fadeIn">
+                  <label htmlFor="numeroLote" className="text-label-sm font-label-sm text-on-surface-variant flex items-center justify-between">
+                    <span>Nº de Lote / Código</span>
+                    <span className="text-[10px] text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">Opcional</span>
+                  </label>
+                  <input
+                    id="numeroLote"
+                    type="text"
+                    value={numeroLote}
+                    onChange={e => setNumeroLote(e.target.value)}
+                    placeholder="Ej. LOT-2026-A105"
+                    className="w-full py-2.5 px-3 bg-white/50 border border-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-primary text-body-md font-medium"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-base animate-fadeIn">
+                  <label htmlFor="fechaVencimiento" className="text-label-sm font-label-sm text-on-surface-variant flex items-center justify-between">
+                    <span>Fecha de Vencimiento</span>
+                    <span className="text-[10px] text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">Opcional</span>
+                  </label>
+                  <input
+                    id="fechaVencimiento"
+                    type="date"
+                    value={fechaVencimiento}
+                    onChange={e => setFechaVencimiento(e.target.value)}
+                    className="w-full py-2.5 px-3 bg-white/50 border border-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-primary text-body-md font-semibold text-amber-900"
+                  />
+                </div>
+              </>
+            )}
 
             {/* Live Stock Kardex Calculation Preview Box */}
             {productoId && (stockOrigen !== null || stockDestino !== null) && (

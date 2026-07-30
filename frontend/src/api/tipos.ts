@@ -103,3 +103,67 @@ export interface TareaLogistica {
   notasChofer?: string | null
   comprobanteUrl?: string | null
 }
+
+export interface ResumenDashboard {
+  kpis: {
+    totalProductos: number
+    totalAlmacenes: number
+    alertasStockCount: number
+    alertasVencimientoCount: number
+    tareasPendientesCount: number
+    movimientosMesCount: number
+  }
+  entradasVsSalidas: Array<{
+    fecha: string
+    entradas: number
+    salidas: number
+  }>
+  topInsumos: Array<{
+    productoNombre: string
+    unidadMedida: string
+    totalSalidas: number
+  }>
+  distribucionAlmacenes: Array<{
+    almacenNombre: string
+    totalStock: number
+  }>
+  estadoLogistica: {
+    pendientes: number
+    enTransito: number
+    entregadas: number
+    total: number
+  }
+  ultimosMovimientos: Array<{
+    id: number
+    fecha: string
+    tipo: string
+    productoNombre: string
+    sku: string
+    cantidad: number
+    unidadMedida: string
+    almacenOrigen: string | null
+    almacenDestino: string | null
+    usuario: string
+  }>
+}
+
+export interface RecepcionMateriaPrima {
+  id: number
+  fechaRecepcion: string
+  producto: { id: number; sku: string; nombre: string; unidadMedida: string }
+  almacen: { id: number; nombre: string }
+  cantidadRecibida: number
+  proveedor: string
+  numeroGuiaFactura?: string | null
+  numeroLote: string
+  fechaFabricacion?: string | null
+  fechaVencimiento?: string | null
+  empaqueConforme: boolean
+  aspectoConforme: boolean
+  temperatura?: string | null
+  dictamenCalidad: string
+  dictamenNum: number // 1 = Aprobado, 2 = Rechazado, 3 = Condicional
+  observaciones?: string | null
+  fichaTecnicaUrl?: string | null
+  usuario: string
+}

@@ -158,10 +158,18 @@ public class MovimientoService
     // entidades fantasma.
     private async Task<Movimiento> EjecutarConReintentosAsync(Func<Task<Movimiento>> operacion)
     {
+        var strategy = _db.Database.CreateExecutionStrategy();
         const int maxIntentos = 3;
         for (var intento = 1; ; intento++)
         {
-            try { return await operacion(); }
+            try
+            {
+                return await strategy.ExecuteAsync(async () =>
+                {
+                    _db.ChangeTracker.Clear();
+                    return await operacion();
+                });
+            }
             catch (Exception ex) when (intento < maxIntentos && EsReintentable(ex))
             {
                 _db.ChangeTracker.Clear();
