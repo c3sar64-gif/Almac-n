@@ -72,11 +72,27 @@ public class MovimientosController : ControllerBase
             .Select(m => new
             {
                 m.Id, Tipo = m.Tipo.ToString(), m.Fecha, m.Cantidad, m.Nota,
-                m.NumeroLote, m.FechaVencimiento,
+                m.NumeroLote, m.FechaVencimiento, m.PrecioUnitario,
                 Producto = new { m.Producto!.Id, m.Producto.Sku, m.Producto.Nombre },
                 AlmacenOrigen = m.AlmacenOrigen == null ? null : m.AlmacenOrigen.Nombre,
                 AlmacenDestino = m.AlmacenDestino == null ? null : m.AlmacenDestino.Nombre,
                 Usuario = m.Usuario!.Nombre,
             }).ToListAsync();
+    }
+
+    [HttpPut("{id:int}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<Movimiento>> Editar(int id, MovimientoRequest r)
+    {
+        return await _svc.EditarMovimientoAsync(
+            id, r.ProductoId, r.Cantidad, r.Nota, r.AlmacenOrigenId, r.AlmacenDestinoId,
+            r.Fecha, r.NumeroLote, r.FechaVencimiento, r.PrecioUnitario);
+    }
+
+    [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<Movimiento>> Eliminar(int id)
+    {
+        return await _svc.EliminarMovimientoAsync(id);
     }
 }

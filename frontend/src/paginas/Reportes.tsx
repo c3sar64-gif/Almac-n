@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { api } from '../api/cliente'
+import { api, obtenerSesion } from '../api/cliente'
 import type { Almacen, Movimiento, Producto, Existencia } from '../api/tipos'
 
 interface FilaInventario {
@@ -16,6 +16,8 @@ interface FilaInventario {
 }
 
 export default function Reportes() {
+  const sesion = obtenerSesion()
+  const esAdmin = sesion?.rol === 'Admin'
   const [tab, setTab] = useState<'historial' | 'auditoria' | 'kardex'>('kardex')
   const [movimientos, setMovimientos] = useState<Movimiento[]>([])
   const [productos, setProductos] = useState<Producto[]>([])
@@ -41,6 +43,15 @@ export default function Reportes() {
   const [error, setError] = useState('')
   const [exito, setExito] = useState('')
   const [cargando, setCargando] = useState(false)
+
+  // Estados Edición de Movimientos (Admin)
+  const [editMovimiento, setEditMovimiento] = useState<Movimiento | null>(null)
+  const [editCantidad, setEditCantidad] = useState('')
+  const [editPrecioUnitario, setEditPrecioUnitario] = useState('')
+  const [editNumeroLote, setEditNumeroLote] = useState('')
+  const [editFechaVencimiento, setEditFechaVencimiento] = useState('')
+  const [editFecha, setEditFecha] = useState('')
+  const [editNota, setEditNota] = useState('')
 
   // Cargar catálogos y seleccionar primer producto por defecto para Kardex
   useEffect(() => {
@@ -83,6 +94,62 @@ export default function Reportes() {
     api<Movimiento[]>(`/api/movimientos?${params}`)
       .then(setMovimientos)
       .catch(e => setError(e.message))
+  }
+
+  function iniciarEdicion(m: Movimiento) {
+    setEditMovimiento(m)
+    setEditCantidad(String(m.cantidad))
+    setEditPrecioUnitario(m.precioUnitario ? String(m.precioUnitario) : '')
+    setEditNumeroLote(m.numeroLote || '')
+    setEditFechaVencimiento(m.fechaVencimiento ? m.fechaVencimiento.substring(0, 10) : '')
+    setEditFecha(m.fecha ? m.fecha.substring(0, 10) : '')
+    setEditNota(m.nota || '')
+    setError('')
+    setExito('')
+  }
+
+  async function guardarEdicion(e: FormEvent) {
+    e.preventDefault()
+    if (!editMovimiento) return
+    setCargando(true)
+    setError('')
+    setExito('')
+    try {
+      await api(`/api/movimientos/${editMovimiento.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          productoId: editMovimiento.producto.id,
+          cantidad: Number(editCantidad),
+          nota: editNota || null,
+          almacenOrigenId: editMovimiento.tipo === 'Salida' || editMovimiento.tipo === 'Transferencia' ? almacenes.find(a => a.nombre === editMovimiento.almacenOrigen)?.id : null,
+          almacenDestinoId: editMovimiento.tipo === 'Entrada' || editMovimiento.tipo === 'Transferencia' ? almacenes.find(a => a.nombre === editMovimiento.almacenDestino)?.id : null,
+          fecha: editFecha ? `${editFecha}T12:00:00Z` : null,
+          numeroLote: editNumeroLote ? editNumeroLote.trim() : null,
+          fechaVencimiento: editFechaVencimiento ? `${editFechaVencimiento}T12:00:00Z` : null,
+          precioUnitario: editPrecioUnitario ? Number(editPrecioUnitario) : null,
+        })
+      })
+      setExito('Movimiento editado con éxito.')
+      setEditMovimiento(null)
+      cargarHistorial()
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  async function eliminarMovimiento(id: number) {
+    if (!window.confirm("⚠️ ¿Estás seguro de que deseas eliminar este movimiento?\n\nEsta acción revertirá los saldos correspondientes de stock y lotes de forma automática y permanente.")) return
+    try {
+      setError('')
+      setExito('')
+      await api(`/api/movimientos/${id}`, { method: 'DELETE' })
+      setExito("Movimiento eliminado con éxito. Stock y lotes actualizados.")
+      cargarHistorial()
+    } catch (err: any) {
+      setError(err.message)
+    }
   }
 
   useEffect(() => {
@@ -693,6 +760,7 @@ export default function Reportes() {
                     <th className="px-8 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Destino</th>
                     <th className="px-8 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Operador</th>
                     <th className="px-8 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Nota</th>
+                    {esAdmin && <th className="px-8 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider text-center no-print">Acciones</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -726,11 +794,28 @@ export default function Reportes() {
                         <td className="px-8 py-4 text-xs text-slate-400 italic font-medium max-w-xs truncate" title={m.nota ?? ''}>
                           {m.nota ?? '—'}
                         </td>
+                        {esAdmin && (
+                          <td className="px-8 py-4 text-xs text-center font-semibold space-x-2 whitespace-nowrap no-print">
+                            <button
+                              onClick={() => iniciarEdicion(m)}
+                              className="text-blue-600 hover:text-blue-900 font-bold hover:underline cursor-pointer"
+                            >
+                              Editar
+                            </button>
+                            <span className="text-slate-300">|</span>
+                            <button
+                              onClick={() => eliminarMovimiento(m.id)}
+                              className="text-rose-600 hover:text-[#ba1a1a] font-bold hover:underline cursor-pointer"
+                            >
+                              Eliminar
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={10} className="px-8 py-8 text-center text-slate-400 text-xs">
+                      <td colSpan={esAdmin ? 11 : 10} className="px-8 py-8 text-center text-slate-400 text-xs">
                         No se encontraron movimientos registrados en este período.
                       </td>
                     </tr>
@@ -738,6 +823,131 @@ export default function Reportes() {
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE EDICIÓN DE MOVIMIENTO */}
+      {editMovimiento && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-xl max-w-lg w-full p-6 mx-4 max-h-[90vh] overflow-y-auto animate-fadeIn">
+            <div className="flex items-center gap-3 mb-4 border-b border-slate-100 pb-3">
+              <span className="material-symbols-outlined text-[#3755c3] bg-blue-50 p-2 rounded-full">edit</span>
+              <div>
+                <h3 className="text-sm font-bold text-[#001f51] uppercase tracking-wider">Editar Movimiento (Admin)</h3>
+                <p className="text-xs text-slate-400 mt-0.5 font-medium">Reversión automática de stock aplicada al guardar</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 p-3 rounded-lg text-xs space-y-1 text-slate-600 mb-4 border border-slate-100">
+              <p><strong>Producto:</strong> {editMovimiento.producto.nombre}</p>
+              <p><strong>Tipo:</strong> <span className="font-bold">{editMovimiento.tipo}</span></p>
+              {editMovimiento.almacenOrigen && <p><strong>Origen:</strong> {editMovimiento.almacenOrigen}</p>}
+              {editMovimiento.almacenDestino && <p><strong>Destino:</strong> {editMovimiento.almacenDestino}</p>}
+            </div>
+
+            <form onSubmit={guardarEdicion} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Cantidad */}
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="editCantidad" className="text-xs font-bold text-slate-500">Cantidad</label>
+                  <input
+                    id="editCantidad"
+                    type="number"
+                    min="0.001"
+                    step="any"
+                    value={editCantidad}
+                    onChange={e => setEditCantidad(e.target.value)}
+                    required
+                    className="w-full py-2 px-3 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-[#3755c3] text-sm font-semibold"
+                  />
+                </div>
+
+                {/* Precio Unitario (Solo Entrada) */}
+                {editMovimiento.tipo === 'Entrada' && (
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="editPrecioUnitario" className="text-xs font-bold text-slate-500">Precio Unitario (Bs)</label>
+                    <input
+                      id="editPrecioUnitario"
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={editPrecioUnitario}
+                      onChange={e => setEditPrecioUnitario(e.target.value)}
+                      className="w-full py-2 px-3 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-[#3755c3] text-sm font-semibold"
+                    />
+                  </div>
+                )}
+
+                {/* Fecha */}
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="editFecha" className="text-xs font-bold text-slate-500">Fecha</label>
+                  <input
+                    id="editFecha"
+                    type="date"
+                    value={editFecha}
+                    onChange={e => setEditFecha(e.target.value)}
+                    required
+                    className="w-full py-2 px-3 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-[#3755c3] text-sm font-semibold"
+                  />
+                </div>
+
+                {/* N° Lote */}
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="editNumeroLote" className="text-xs font-bold text-slate-500">Número de Lote (Opcional)</label>
+                  <input
+                    id="editNumeroLote"
+                    type="text"
+                    value={editNumeroLote}
+                    onChange={e => setEditNumeroLote(e.target.value)}
+                    placeholder="LOT-X"
+                    className="w-full py-2 px-3 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-[#3755c3] text-sm"
+                  />
+                </div>
+
+                {/* Fecha Vencimiento */}
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="editFechaVencimiento" className="text-xs font-bold text-slate-500">Fecha Vencimiento (Opcional)</label>
+                  <input
+                    id="editFechaVencimiento"
+                    type="date"
+                    value={editFechaVencimiento}
+                    onChange={e => setEditFechaVencimiento(e.target.value)}
+                    className="w-full py-2 px-3 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-[#3755c3] text-sm font-semibold"
+                  />
+                </div>
+              </div>
+
+              {/* Nota / Justificación */}
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="editNota" className="text-xs font-bold text-slate-500">Notas / Justificación</label>
+                <textarea
+                  id="editNota"
+                  rows={2}
+                  value={editNota}
+                  onChange={e => setEditNota(e.target.value)}
+                  className="w-full py-2 px-3 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-[#3755c3] text-sm resize-none"
+                  placeholder="Justificación del ajuste o corrección"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditMovimiento(null)}
+                  className="py-2 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={cargando}
+                  className="py-2 px-4 bg-[#3755c3] hover:bg-[#001f51] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {cargando ? 'Guardando...' : 'Guardar Cambios'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
