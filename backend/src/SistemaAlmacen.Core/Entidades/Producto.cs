@@ -10,4 +10,5 @@ public class Producto
     public string UnidadMedida { get; set; } = "pieza";
     public bool Activo { get; set; } = true;
     public string? ImagenUrl { get; set; }
+    public decimal? PrecioUnitario { get; set; }
 }

@@ -7,6 +7,7 @@ export interface Producto {
   unidadMedida: string
   activo: boolean
   imagenUrl?: string | null
+  precioUnitario?: number | null
 }
 
 export interface Almacen {
@@ -21,7 +22,7 @@ export interface Existencia {
   cantidad: number
   stockMinimo: number
   bajoMinimo: boolean
-  producto: { id: number; sku: string; nombre: string; unidadMedida: string; categoria?: string | null; imagenUrl?: string | null }
+  producto: { id: number; sku: string; nombre: string; unidadMedida: string; categoria?: string | null; imagenUrl?: string | null; precioUnitario?: number | null }
   almacen: { id: number; nombre: string }
 }
 
@@ -33,6 +34,7 @@ export interface Movimiento {
   nota?: string | null
   numeroLote?: string | null
   fechaVencimiento?: string | null
+  precioUnitario?: number | null
   producto: { id: number; sku: string; nombre: string }
   almacenOrigen?: string | null
   almacenDestino?: string | null

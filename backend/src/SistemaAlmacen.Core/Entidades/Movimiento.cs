@@ -19,4 +19,5 @@ public class Movimiento
     public string? Nota { get; set; }
     public string? NumeroLote { get; set; }
     public DateTime? FechaVencimiento { get; set; }
+    public decimal? PrecioUnitario { get; set; }
 }

@@ -11,7 +11,7 @@ namespace SistemaAlmacen.Api.Controllers;
 public record MovimientoRequest(
     int ProductoId, decimal Cantidad, string? Nota,
     int? AlmacenOrigenId, int? AlmacenDestinoId, DateTime? Fecha,
-    string? NumeroLote, DateTime? FechaVencimiento);
+    string? NumeroLote, DateTime? FechaVencimiento, decimal? PrecioUnitario);
 
 [ApiController]
 [Route("api/movimientos")]
@@ -34,7 +34,7 @@ public class MovimientosController : ControllerBase
         if (r.AlmacenDestinoId is null)
             throw new ReglaNegocioException("Falta el almacén de destino.");
         return await _svc.RegistrarEntradaAsync(
-            r.ProductoId, r.AlmacenDestinoId.Value, r.Cantidad, UsuarioId, r.Nota, r.Fecha, r.NumeroLote, r.FechaVencimiento);
+            r.ProductoId, r.AlmacenDestinoId.Value, r.Cantidad, UsuarioId, r.Nota, r.Fecha, r.NumeroLote, r.FechaVencimiento, r.PrecioUnitario);
     }
 
     [HttpPost("salida")]

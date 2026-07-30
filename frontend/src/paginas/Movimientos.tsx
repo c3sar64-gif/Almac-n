@@ -31,6 +31,7 @@ export default function Movimientos() {
   const [exito, setExito] = useState('')
   const [cargando, setCargando] = useState(false)
   const [mostrarOpcionesLote, setMostrarOpcionesLote] = useState(false)
+  const [precioUnitario, setPrecioUnitario] = useState('')
 
   const [stockOrigen, setStockOrigen] = useState<number | null>(null)
   const [stockDestino, setStockDestino] = useState<number | null>(null)
@@ -110,6 +111,7 @@ export default function Movimientos() {
           fecha: fecha ? `${fecha}T12:00:00Z` : null,
           numeroLote: numeroLote ? numeroLote.trim() : null,
           fechaVencimiento: fechaVencimiento ? `${fechaVencimiento}T12:00:00Z` : null,
+          precioUnitario: precioUnitario ? Number(precioUnitario) : null,
         }),
       })
       setExito(`Movimiento de ${tipo.toUpperCase()} registrado con éxito.`)
@@ -120,6 +122,7 @@ export default function Movimientos() {
       setDestinoId('')
       setNumeroLote('')
       setFechaVencimiento('')
+      setPrecioUnitario('')
       setStockOrigen(null)
       setStockDestino(null)
     } catch (err: any) {
@@ -297,6 +300,26 @@ export default function Movimientos() {
               />
             </div>
 
+            {/* Precio Unitario (Solo para Entrada) */}
+            {tipo === 'entrada' && (
+              <div className="flex flex-col gap-base animate-fadeIn">
+                <label htmlFor="precioUnitario" className="text-label-sm font-label-sm text-on-surface-variant flex items-center justify-between">
+                  <span>Precio Unitario (Bs)</span>
+                  <span className="text-[10px] text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">Opcional</span>
+                </label>
+                <input
+                  id="precioUnitario"
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={precioUnitario}
+                  onChange={e => setPrecioUnitario(e.target.value)}
+                  placeholder="Ej. 20.00"
+                  className="w-full py-2.5 px-3 bg-white/50 border border-outline-variant rounded-lg outline-none focus:ring-2 focus:ring-primary text-body-lg font-extrabold text-[#001f51]"
+                />
+              </div>
+            )}
+
             {/* Botón Tono / Colapsable para Opciones Avanzadas de Lote */}
             <div className="md:col-span-2 pt-2">
               <button
@@ -365,20 +388,31 @@ export default function Movimientos() {
                 </div>
 
                 {tipo === 'entrada' && stockDestino !== null && (
-                  <div className="grid grid-cols-3 gap-3 text-center">
-                    <div className="bg-white/10 p-2.5 rounded-lg border border-white/10">
-                      <span className="text-[10px] text-slate-300 block uppercase font-medium">Saldo Actual</span>
-                      <span className="text-base font-extrabold text-white">{stockDestino} {unidadSel}</span>
+                  <>
+                    <div className="grid grid-cols-3 gap-3 text-center">
+                      <div className="bg-white/10 p-2.5 rounded-lg border border-white/10">
+                        <span className="text-[10px] text-slate-300 block uppercase font-medium">Saldo Actual</span>
+                        <span className="text-base font-extrabold text-white">{stockDestino} {unidadSel}</span>
+                      </div>
+                      <div className="bg-emerald-500/20 p-2.5 rounded-lg border border-emerald-400/30">
+                        <span className="text-[10px] text-emerald-300 block uppercase font-medium">Ingreso</span>
+                        <span className="text-base font-extrabold text-emerald-300">+{cantNum} {unidadSel}</span>
+                      </div>
+                      <div className="bg-blue-500/30 p-2.5 rounded-lg border border-blue-400/40">
+                        <span className="text-[10px] text-blue-200 block uppercase font-medium">Saldo Resultante</span>
+                        <span className="text-base font-black text-white">{stockDestino + cantNum} {unidadSel}</span>
+                      </div>
                     </div>
-                    <div className="bg-emerald-500/20 p-2.5 rounded-lg border border-emerald-400/30">
-                      <span className="text-[10px] text-emerald-300 block uppercase font-medium">Ingreso</span>
-                      <span className="text-base font-extrabold text-emerald-300">+{cantNum} {unidadSel}</span>
-                    </div>
-                    <div className="bg-blue-500/30 p-2.5 rounded-lg border border-blue-400/40">
-                      <span className="text-[10px] text-blue-200 block uppercase font-medium">Saldo Resultante</span>
-                      <span className="text-base font-black text-white">{stockDestino + cantNum} {unidadSel}</span>
-                    </div>
-                  </div>
+
+                    {Number(precioUnitario) > 0 && (
+                      <div className="mt-3 pt-3 border-t border-white/10 flex justify-between items-center text-xs animate-fadeIn">
+                        <span className="text-blue-200 font-medium">Costo Total Estimado:</span>
+                        <span className="font-black text-emerald-300 text-sm">
+                          {cantNum} × {Number(precioUnitario).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs = { (cantNum * Number(precioUnitario)).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) } Bs
+                        </span>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {tipo === 'salida' && stockOrigen !== null && (

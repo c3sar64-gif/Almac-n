@@ -19,7 +19,7 @@ public class MovimientoService
     }
 
     public Task<Movimiento> RegistrarEntradaAsync(
-        int productoId, int almacenId, decimal cantidad, int usuarioId, string? nota = null, DateTime? fecha = null, string? numeroLote = null, DateTime? fechaVencimiento = null)
+        int productoId, int almacenId, decimal cantidad, int usuarioId, string? nota = null, DateTime? fecha = null, string? numeroLote = null, DateTime? fechaVencimiento = null, decimal? precioUnitario = null)
         => EjecutarConReintentosAsync(async () =>
         {
             ValidarCantidad(cantidad);
@@ -27,6 +27,13 @@ public class MovimientoService
             await using var tx = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             var existencia = await ObtenerOCrearExistenciaAsync(productoId, almacenId);
             existencia.Cantidad += cantidad;
+
+            // Actualizar precio unitario de referencia en el Producto
+            var prod = await _db.Productos.FindAsync(productoId);
+            if (prod is not null && precioUnitario.HasValue)
+            {
+                prod.PrecioUnitario = precioUnitario.Value;
+            }
 
             DateTime? fechaVencUtc = fechaVencimiento.HasValue ? ObtenerFechaMovimientoUtc(fechaVencimiento) : null;
             var loteStr = string.IsNullOrWhiteSpace(numeroLote) ? null : numeroLote.Trim();
@@ -59,7 +66,8 @@ public class MovimientoService
                 Tipo = TipoMovimiento.Entrada, ProductoId = productoId,
                 AlmacenDestinoId = almacenId, Cantidad = cantidad,
                 UsuarioId = usuarioId, Nota = nota, Fecha = ObtenerFechaMovimientoUtc(fecha),
-                NumeroLote = loteStr, FechaVencimiento = fechaVencUtc
+                NumeroLote = loteStr, FechaVencimiento = fechaVencUtc,
+                PrecioUnitario = precioUnitario
             };
             _db.Movimientos.Add(mov);
             await _db.SaveChangesAsync();

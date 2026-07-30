@@ -26,6 +26,8 @@ public class AppDbContext : DbContext
         mb.Entity<Existencia>().Property(e => e.Cantidad).HasPrecision(18, 3);
         mb.Entity<Existencia>().Property(e => e.StockMinimo).HasPrecision(18, 3);
         mb.Entity<Movimiento>().Property(m => m.Cantidad).HasPrecision(18, 3);
+        mb.Entity<Movimiento>().Property(m => m.PrecioUnitario).HasPrecision(18, 2);
+        mb.Entity<Producto>().Property(p => p.PrecioUnitario).HasPrecision(18, 2);
         mb.Entity<Movimiento>()
             .HasOne(m => m.AlmacenOrigen).WithMany()
             .HasForeignKey(m => m.AlmacenOrigenId).OnDelete(DeleteBehavior.Restrict);

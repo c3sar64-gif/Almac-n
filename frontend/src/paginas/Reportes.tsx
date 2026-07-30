@@ -687,6 +687,8 @@ export default function Reportes() {
                     <th className="px-8 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Tipo</th>
                     <th className="px-8 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Producto</th>
                     <th className="px-8 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">Cantidad</th>
+                    <th className="px-8 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">P. Unitario</th>
+                    <th className="px-8 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider text-right">P. Total</th>
                     <th className="px-8 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Origen</th>
                     <th className="px-8 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Destino</th>
                     <th className="px-8 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">Operador</th>
@@ -712,6 +714,12 @@ export default function Reportes() {
                         <td className="px-8 py-4 text-sm text-right font-bold text-slate-800">
                           {m.cantidad}
                         </td>
+                        <td className="px-8 py-4 text-sm text-right font-semibold text-slate-500">
+                          {m.precioUnitario ? `${m.precioUnitario.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs` : '—'}
+                        </td>
+                        <td className="px-8 py-4 text-sm text-right font-bold text-[#001f51]">
+                          {m.precioUnitario ? `${(m.cantidad * m.precioUnitario).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs` : '—'}
+                        </td>
                         <td className="px-8 py-4 text-xs text-slate-500 font-semibold">{m.almacenOrigen ?? '—'}</td>
                         <td className="px-8 py-4 text-xs text-slate-500 font-semibold">{m.almacenDestino ?? '—'}</td>
                         <td className="px-8 py-4 text-xs text-slate-400 font-semibold">{m.usuario}</td>
@@ -722,7 +730,7 @@ export default function Reportes() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={8} className="px-8 py-8 text-center text-slate-400 text-xs">
+                      <td colSpan={10} className="px-8 py-8 text-center text-slate-400 text-xs">
                         No se encontraron movimientos registrados en este período.
                       </td>
                     </tr>
