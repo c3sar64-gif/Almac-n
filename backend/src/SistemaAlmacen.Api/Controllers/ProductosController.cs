@@ -49,6 +49,23 @@ public class ProductosController : ControllerBase
         return NoContent();
     }
 
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Eliminar(int id)
+    {
+        var p = await _db.Productos.FindAsync(id);
+        if (p is null) return NotFound();
+
+        if (await _db.Movimientos.AnyAsync(m => m.ProductoId == id))
+            throw new ReglaNegocioException("No se puede eliminar el producto porque tiene movimientos registrados. Márcalo como inactivo en su lugar.");
+
+        var existencias = _db.Existencias.Where(e => e.ProductoId == id);
+        _db.Existencias.RemoveRange(existencias);
+
+        _db.Productos.Remove(p);
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
     [HttpPost("upload-imagen")]
     public async Task<IActionResult> UploadImagen(IFormFile file, [FromQuery] string? categoria, [FromQuery] string? sku)
     {

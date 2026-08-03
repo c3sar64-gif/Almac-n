@@ -16,6 +16,7 @@ export default function Productos() {
   const [productos, setProductos] = useState<Producto[]>([])
   const [form, setForm] = useState(vacio)
   const [editando, setEditando] = useState<number | null>(null)
+  const [productoAEliminar, setProductoAEliminar] = useState<Producto | null>(null)
   const [error, setError] = useState('')
   const [exito, setExito] = useState('')
   const [cargando, setCargando] = useState(false)
@@ -85,6 +86,29 @@ export default function Productos() {
     })
     setError('')
     setExito('')
+  }
+
+  function solicitarEliminarProducto(p: Producto) {
+    setProductoAEliminar(p)
+  }
+
+  async function ejecutarEliminarProducto() {
+    if (!productoAEliminar) return
+    const p = productoAEliminar
+    setProductoAEliminar(null)
+    setError('')
+    setExito('')
+    try {
+      await api(`/api/productos/${p.id}`, { method: 'DELETE' })
+      setExito(`Producto "${p.nombre}" eliminado con éxito.`)
+      if (editando === p.id) {
+        setEditando(null)
+        setForm(vacio)
+      }
+      await cargar()
+    } catch (err: any) {
+      setError(err.message)
+    }
   }
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -417,6 +441,13 @@ export default function Productos() {
                           >
                             <span className="material-symbols-outlined text-[18px]">edit</span>
                           </button>
+                          <button
+                            onClick={() => solicitarEliminarProducto(p)}
+                            className="w-9 h-9 flex items-center justify-center rounded-lg border border-slate-200 hover:bg-red-50 hover:text-[#ba1a1a] transition-all cursor-pointer !text-slate-500 !bg-white !p-0"
+                            title="Eliminar producto"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -553,6 +584,42 @@ export default function Productos() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmación de Eliminación de Producto */}
+      {productoAEliminar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-2xl max-w-sm w-full p-6 mx-4 text-center space-y-4">
+            <div className="w-14 h-14 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto shadow-inner">
+              <span className="material-symbols-outlined text-3xl">warning</span>
+            </div>
+
+            <div>
+              <h3 className="text-base font-bold text-[#001f51]">¿Eliminar Producto?</h3>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                ¿Estás seguro de eliminar permanentemente <strong>"{productoAEliminar.nombre}"</strong> (SKU: {productoAEliminar.sku})?
+              </p>
+            </div>
+
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setProductoAEliminar(null)}
+                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold text-xs rounded-xl transition-all cursor-pointer !bg-white"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={ejecutarEliminarProducto}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-base">delete</span>
+                <span>Sí, Eliminar</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
