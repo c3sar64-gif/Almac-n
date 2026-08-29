@@ -4,8 +4,13 @@ import type { Almacen, TareaLogistica, UsuarioLista } from '../api/tipos'
 import { useAuth } from '../auth/AuthContext'
 
 const HORAS_JORNADA = [
-  '07:00', '08:00', '09:00', '10:00', '11:00',
-  '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'
+  '05:00', '06:00', '07:00', '08:00', '09:00', '10:00',
+  '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'
+]
+
+const HORAS_FIN_OPCIONES = [
+  '06:00', '07:00', '08:00', '09:00', '10:00', '11:00',
+  '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'
 ]
 
 export default function LogisticaChoferes() {
@@ -260,7 +265,7 @@ export default function LogisticaChoferes() {
         <div>
           <h1 className="font-headline-lg text-headline-lg text-[#001f51] font-bold flex items-center gap-3">
             <span className="material-symbols-outlined text-3xl text-[#3755c3]">local_shipping</span>
-            Programación y Matriz Logística (07:00 - 17:00)
+            Programación y Matriz Logística (05:00 - 17:00)
           </h1>
           <p className="font-body-md text-body-md text-slate-500 mt-1 max-w-2xl">
             {esChofer
@@ -462,7 +467,7 @@ export default function LogisticaChoferes() {
                     onChange={e => setHoraFin(e.target.value)}
                     className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold outline-none focus:border-[#3755c3]"
                   >
-                    {['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'].map(h => (
+                    {HORAS_FIN_OPCIONES.map(h => (
                       <option key={h} value={h}>{h}</option>
                     ))}
                   </select>
@@ -529,7 +534,7 @@ export default function LogisticaChoferes() {
           {/* Filter Bar */}
           <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h2 className="text-xs font-bold text-[#001f51] uppercase tracking-wider">
-              {vista === 'matriz' ? 'MATRIZ HORARIA DE TRABAJO (07:00 - 17:00)' : 'HOJA DE RUTA DETALLADA'}
+              {vista === 'matriz' ? 'MATRIZ HORARIA DE TRABAJO (05:00 - 17:00)' : 'HOJA DE RUTA DETALLADA'}
             </h2>
             <div className="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0">
               {['todos', 'Pendiente', 'EnRuta', 'Completada'].map(st => (
@@ -544,7 +549,7 @@ export default function LogisticaChoferes() {
             </div>
           </div>
 
-          {/* VISTA 1: MATRIZ HORARIA (07:00 - 17:00) */}
+          {/* VISTA 1: MATRIZ HORARIA (05:00 - 17:00) */}
           {vista === 'matriz' && (
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
@@ -1044,7 +1049,7 @@ export default function LogisticaChoferes() {
                       onChange={e => setEditHoraFin(e.target.value)}
                       className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold outline-none focus:border-[#3755c3]"
                     >
-                      {['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'].map(h => (
+                      {HORAS_FIN_OPCIONES.map(h => (
                         <option key={h} value={h}>{h}</option>
                       ))}
                     </select>
