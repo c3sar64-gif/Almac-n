@@ -18,13 +18,27 @@ public class RecepcionMateriaPrima
     public decimal CantidadRecibida { get; set; }
     public string Proveedor { get; set; } = "";
     public string? NumeroGuiaFactura { get; set; }
+    public string? RegistroSenasag { get; set; }
+    public string? NombreTransportista { get; set; }
 
     // Control de Lote y Vencimiento
     public string NumeroLote { get; set; } = "";
     public DateTime? FechaFabricacion { get; set; }
     public DateTime? FechaVencimiento { get; set; }
 
-    // Protocolo de Calidad (BPM / HACCP)
+    // Protocolo Oficial OVOPLUS - II. Documentación
+    public bool DocCuentaConFacturaFichaCalidad { get; set; } = true;
+    public bool DocCoincidePedido { get; set; } = true;
+
+    // Protocolo Oficial OVOPLUS - III. Transporte y Vehículo
+    public bool TranspVehiculoLimpio { get; set; } = true;
+    public bool TranspMercanciaEstibada { get; set; } = true;
+
+    // Protocolo Oficial OVOPLUS - IV. Empaques
+    public bool EmpaqueEtiquetasLegibles { get; set; } = true;
+    public bool EmpaqueEnvasesLimpios { get; set; } = true;
+
+    // Protocolo de Calidad (BPM / HACCP - Compatibilidad)
     public bool EmpaqueConforme { get; set; } = true;
     public bool AspectoConforme { get; set; } = true;
     public string? Temperatura { get; set; }

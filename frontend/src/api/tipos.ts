@@ -157,9 +157,19 @@ export interface RecepcionMateriaPrima {
   cantidadRecibida: number
   proveedor: string
   numeroGuiaFactura?: string | null
+  registroSenasag?: string | null
+  nombreTransportista?: string | null
   numeroLote: string
   fechaFabricacion?: string | null
   fechaVencimiento?: string | null
+  // Protocolo Oficial OVOPLUS
+  docCuentaConFacturaFichaCalidad: boolean
+  docCoincidePedido: boolean
+  transpVehiculoLimpio: boolean
+  transpMercanciaEstibada: boolean
+  empaqueEtiquetasLegibles: boolean
+  empaqueEnvasesLimpios: boolean
+  // Compatibilidad
   empaqueConforme: boolean
   aspectoConforme: boolean
   temperatura?: string | null

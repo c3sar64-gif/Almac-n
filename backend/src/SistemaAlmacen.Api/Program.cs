@@ -188,9 +188,17 @@ try
                 ""CantidadRecibida"" NUMERIC(18,3) NOT NULL DEFAULT 0,
                 ""Proveedor"" TEXT NOT NULL DEFAULT '',
                 ""NumeroGuiaFactura"" TEXT NULL,
+                ""RegistroSenasag"" TEXT NULL,
+                ""NombreTransportista"" TEXT NULL,
                 ""NumeroLote"" TEXT NOT NULL DEFAULT '',
                 ""FechaFabricacion"" TIMESTAMP WITH TIME ZONE NULL,
                 ""FechaVencimiento"" TIMESTAMP WITH TIME ZONE NULL,
+                ""DocCuentaConFacturaFichaCalidad"" BOOLEAN NOT NULL DEFAULT TRUE,
+                ""DocCoincidePedido"" BOOLEAN NOT NULL DEFAULT TRUE,
+                ""TranspVehiculoLimpio"" BOOLEAN NOT NULL DEFAULT TRUE,
+                ""TranspMercanciaEstibada"" BOOLEAN NOT NULL DEFAULT TRUE,
+                ""EmpaqueEtiquetasLegibles"" BOOLEAN NOT NULL DEFAULT TRUE,
+                ""EmpaqueEnvasesLimpios"" BOOLEAN NOT NULL DEFAULT TRUE,
                 ""EmpaqueConforme"" BOOLEAN NOT NULL DEFAULT TRUE,
                 ""AspectoConforme"" BOOLEAN NOT NULL DEFAULT TRUE,
                 ""Temperatura"" TEXT NULL,
@@ -199,6 +207,15 @@ try
                 ""FichaTecnicaUrl"" TEXT NULL,
                 ""UsuarioId"" INT NOT NULL REFERENCES ""Usuarios""(""Id"") ON DELETE RESTRICT
             );
+
+            ALTER TABLE ""RecepcionesMateriaPrima"" ADD COLUMN IF NOT EXISTS ""RegistroSenasag"" TEXT NULL;
+            ALTER TABLE ""RecepcionesMateriaPrima"" ADD COLUMN IF NOT EXISTS ""NombreTransportista"" TEXT NULL;
+            ALTER TABLE ""RecepcionesMateriaPrima"" ADD COLUMN IF NOT EXISTS ""DocCuentaConFacturaFichaCalidad"" BOOLEAN NOT NULL DEFAULT TRUE;
+            ALTER TABLE ""RecepcionesMateriaPrima"" ADD COLUMN IF NOT EXISTS ""DocCoincidePedido"" BOOLEAN NOT NULL DEFAULT TRUE;
+            ALTER TABLE ""RecepcionesMateriaPrima"" ADD COLUMN IF NOT EXISTS ""TranspVehiculoLimpio"" BOOLEAN NOT NULL DEFAULT TRUE;
+            ALTER TABLE ""RecepcionesMateriaPrima"" ADD COLUMN IF NOT EXISTS ""TranspMercanciaEstibada"" BOOLEAN NOT NULL DEFAULT TRUE;
+            ALTER TABLE ""RecepcionesMateriaPrima"" ADD COLUMN IF NOT EXISTS ""EmpaqueEtiquetasLegibles"" BOOLEAN NOT NULL DEFAULT TRUE;
+            ALTER TABLE ""RecepcionesMateriaPrima"" ADD COLUMN IF NOT EXISTS ""EmpaqueEnvasesLimpios"" BOOLEAN NOT NULL DEFAULT TRUE;
         ");
     }
     catch (Exception ex)
